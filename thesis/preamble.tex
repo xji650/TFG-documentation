@@ -1,0 +1,137 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% PREAMBLE — paquets i configuració del document.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%---------------------------------------------------------------------------
+% Idioma i codificació
+%---------------------------------------------------------------------------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{libertinus}       
+\usepackage{libertinust1math}  
+\usepackage[english]{babel}   % canvia a "catalan" o "spanish" 
+                               
+%---------------------------------------------------------------------------
+% Geometria de la pàgina
+%---------------------------------------------------------------------------
+\usepackage[a4paper,margin=2.5cm,bindingoffset=0.5cm]{geometry}
+
+%---------------------------------------------------------------------------
+% Matemàtiques
+%---------------------------------------------------------------------------
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+%---------------------------------------------------------------------------
+% Llistes
+%---------------------------------------------------------------------------
+\usepackage{enumitem}
+
+%---------------------------------------------------------------------------
+% Figures, taules i captions
+%---------------------------------------------------------------------------
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{booktabs}     
+\usepackage{caption}
+\usepackage{subcaption}   
+
+%---------------------------------------------------------------------------
+% Diagrames (TikZ)
+%---------------------------------------------------------------------------
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,calc}
+
+%---------------------------------------------------------------------------
+% Codi
+%---------------------------------------------------------------------------
+\usepackage{xcolor}
+\usepackage{listings}
+
+\lstdefinestyle{thesisCode}{
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue!60!black}\bfseries,
+    commentstyle=\color{gray},
+    stringstyle=\color{teal},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    frame=single,
+    breaklines=true,
+    showstringspaces=false,
+    tabsize=2,
+}
+\lstset{style=thesisCode}
+% Exemple d'ús a un capítol:
+%   \begin{lstlisting}[language=Python, caption={Exemple de funció}]
+%   def hello():
+%       print("Hola món")
+%   \end{lstlisting}
+
+%---------------------------------------------------------------------------
+% Color UDL
+%---------------------------------------------------------------------------
+\definecolor{udlpurple}{RGB}{146,39,143}
+
+%---------------------------------------------------------------------------
+% Estil dels títols de capítol
+%---------------------------------------------------------------------------
+\usepackage{titlesec}
+\titleformat{\chapter}[display]
+    {\normalfont\bfseries}
+    {\Large\textcolor{udlpurple}{\chaptertitlename\ \thechapter}}
+    {0.5em}
+    {\Huge}
+
+%---------------------------------------------------------------------------
+% Capçaleres i peus de pàgina
+%---------------------------------------------------------------------------
+\usepackage{fancyhdr}
+\setlength{\headheight}{14.5pt}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[C]{\nouppercase{\leftmark}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+\fancypagestyle{plain}{%
+    \fancyhf{}
+    \fancyfoot[C]{\thepage}
+    \renewcommand{\headrulewidth}{0pt}
+}
+
+%---------------------------------------------------------------------------
+% TO DO habitat
+%---------------------------------------------------------------------------
+\usepackage{todonotes}
+
+%---------------------------------------------------------------------------
+% Bibliografia
+%---------------------------------------------------------------------------
+\usepackage[square,numbers]{natbib}
+\bibliographystyle{unsrtnat}
+
+%---------------------------------------------------------------------------
+% Inclusió de PDFs
+%---------------------------------------------------------------------------
+\usepackage{pdfpages}
+
+%---------------------------------------------------------------------------
+% Hipervincles i metadades del PDF
+%---------------------------------------------------------------------------
+\usepackage{hyperref}
+\hypersetup{
+    pdftitle={Títol del TFG/TFM},
+    pdfauthor={Nom Cognom1 Cognom2},
+    colorlinks=true,
+    linkcolor=black,
+    citecolor=udlpurple,
+    urlcolor=udlpurple,
+    bookmarksnumbered=true,
+}
+
+%---------------------------------------------------------------------------
+% Comandes pròpies
+%---------------------------------------------------------------------------
+
+

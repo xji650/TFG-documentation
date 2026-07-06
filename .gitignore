@@ -1,0 +1,39 @@
+# LaTeX
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.synctex.gz
+thesis/main.pdf
+presentation/slides.pdf
+presentation/*.nav
+presentation/*.snm
+presentation/*.vrb
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# macOS
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Generat pel projecte
+results/
+
+# Dades locals (massa grans per al repositori)
+data/raw/
+
+# Nix
+result

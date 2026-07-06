@@ -1,0 +1,75 @@
+\documentclass[a4paper,11pt]{book}
+
+\input{preamble}
+
+\begin{document}
+
+%===========================================================================
+% Portada oficial
+%===========================================================================
+\includepdf[pages=1]{cover.pdf}
+\thispagestyle{empty}
+
+%===========================================================================
+% Preliminars
+%===========================================================================
+\frontmatter
+
+% Agraïments (opcional) — esborra aquest bloc si no en vols.
+\chapter*{Acknowledgements}
+\addcontentsline{toc}{chapter}{Acknowledgements}
+\markboth{Acknowledgements}{Acknowledgements}
+\input{chapters/Acknowledgements}
+
+\tableofcontents
+\listoffigures
+\listoftables
+
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+\markboth{Abstract}{Abstract}
+\input{chapters/00-Abstract}
+
+%===========================================================================
+% Cos del treball
+%===========================================================================
+\mainmatter
+
+\chapter{Introduction}
+\label{ch:introduction}
+\input{chapters/01-Introduction}
+
+\chapter{Background}
+\label{ch:background}
+\input{chapters/02-Background}
+
+\chapter{State of the Art}
+\label{ch:state-of-the-art}
+\input{chapters/03-StateOfTheArt}
+
+\chapter{Methodology}
+\label{ch:methodology}
+\input{chapters/04-Methodology}
+
+\chapter{Implementation}
+\label{ch:implementation}
+\input{chapters/05-Implementation}
+
+\chapter{Results}
+\label{ch:results}
+\input{chapters/06-Results}
+
+\chapter{Conclusions and Future Work}
+\label{ch:conclusions}
+\input{chapters/07-Conclusion}
+
+%===========================================================================
+% Bibliografia i apèndixs
+%===========================================================================
+\backmatter
+
+\bibliography{tfg.bib}
+
+% TODO: add appendices if needed
+
+\end{document}

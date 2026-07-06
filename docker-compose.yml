@@ -1,0 +1,8 @@
+services:
+  thesis:
+    build: .
+    image: tfg-tfm-template:latest
+    working_dir: /thesis
+    volumes:
+      - .:/thesis
+    command: make

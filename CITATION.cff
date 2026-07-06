@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "Si utilitzes aquest treball, si us plau cita'l de la següent manera:"
+title: "[Títol del TFG/TFM]"
+type: software
+authors:
+  - family-names: "[Cognoms]"
+    given-names: "[Nom]"
+    affiliation: "Universitat de Lleida"
+date-released: "[AAAA-MM-DD]"
+license: MIT
