@@ -1,9 +1,7 @@
 # data/
 
-No pugis datasets grans a aquest repositori (vegeu `.gitignore`, que ja
-exclou `data/raw/`). Si necessites compartir-los:
+El proyecto utiliza el dataset oficial [MNIST de TensorFlow Datasets](https://www.tensorflow.org/datasets/catalog/mnist).
 
-- Enllaça aquí mateix a on es poden descarregar (Drive, Zenodo, Kaggle...).
-- O documenta l'script de `scripts/` que els descarrega/genera automàticament.
+No es necesario descargar nada manualmente. 
 
-Esborra aquest fitxer i la carpeta si el teu projecte no usa dades.
+El script `master.py` de la suite de evaluación se encarga de conectarse a la red, descargar el dataset en el nodo *master* y distribuirlo a los *workers* en tiempo de ejecución.
