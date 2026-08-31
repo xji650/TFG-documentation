@@ -9,24 +9,37 @@ Els contenidors són una tecnologia de virtualització a nivell de sistema opera
 \textbf{Arquitectures amb dimoni i sense dimoni (\textit{Daemonless}):}
 Tradicionalment, motors com Docker funcionen basant-se en un dimoni (\textit{daemon}), un procés central en segon pla (generalment executat amb privilegis d'administrador) que gestiona tot el cicle de vida dels contenidors. Si aquest dimoni cau, tot el sistema s'atura. Com a evolució, sorgeix Podman, un motor de contenidors sense dimoni. Podman executa els contenidors interactuant directament amb el nucli del sistema mitjançant processos independents, fet que millora la seguretat, redueix el consum en repòs i permet una integració molt més natural amb el sistema operatiu de la màquina.
 
-\section{Orquestració i Gestió de Contenidors}
-L'orquestració de contenidors és el procés d'automatitzar el desplegament, la gestió, l'escalabilitat i la connectivitat de múltiples contenidors en diferents màquines.
+\section{L'Evolució de l'Orquestració i la Falsa Dicotomia a l'\textit{Edge}}
+L'orquestració automatitza el desplegament, l'escalabilitat i la resiliència de múltiples contenidors. Històricament, l'evolució d'aquests sistemes i el seu mapa mental a la indústria ha travessat diferents fases:  
 
-\textbf{Kubernetes i K3s:}
-Kubernetes és l'estàndard de la indústria per a aquesta orquestració. Gestiona clústers sencers agrupant contenidors en unitats anomenades \textit{Pods}, equilibrant el trànsit de xarxa i assegurant que l'estat desitjat es compleixi (auto-recuperació). No obstant això, la seva complexitat exigeix molts recursos. Aquí és on entra K3s, una distribució certificada i reduïda de Kubernetes dissenyada per a entorns amb pocs recursos (Internet de les Coses o \textit{Edge}), eliminant mòduls innecessaris però mantenint la mateixa lògica distribuïda.
+\begin{enumerate}
+    \item \textbf{La Guerra dels Orquestradors i el domini del \textit{Cloud}:}
+    En els inicis de la contenerització, diverses tecnologies (com Docker Swarm o Apache Mesos) van competir per liderar l'orquestració. Cap a l'any 2018, Kubernetes va guanyar aquesta batalla tecnològica de forma absoluta, convertint-se en l'estàndard indiscutible per als grans centres de dades (\textit{Cloud}).
 
-\section{L'enfocament Natiu: Systemd, Quadlets i Ansible}
-Systemd és el sistema d'inicialització i gestor de serveis per defecte en la majoria de distribucions Linux. S'encarrega d'arrencar els programes quan s'encén la màquina i de reiniciar-los si fallen. Històricament, per integrar contenidors amb Systemd s'utilitzava l'enfocament \textit{Legacy}, on s'havien d'escriure manualment fitxers complexos (\texttt{.service}) ple de comandes d'execució. Actualment, l'estàndard són els \textit{Quadlets}, una eina nativa de Podman que permet definir contenidors de manera declarativa i senzilla; el sistema s'encarrega de traduir-ho automàticament en serveis que Systemd pot entendre i gestionar.
+    \item \textbf{El dogma de ``Kubernetes cada vegada més lleuger'':}
+    Quan va sorgir la necessitat d'executar càrregues de treball als extrems de la xarxa (\textit{Edge Computing}), la indústria va assumir una visió de túnel: l'única forma de fer-ho era ``encongir'' Kubernetes. Els esforços d'enginyeria es van centrar exclusivament a retallar components massius per encabir l'orquestrador en dispositius petits, donant lloc a distribucions com K3s o MicroK8s. Tanmateix, totes elles mantenien obligatòriament l'arquitectura base: un procés resident (\texttt{kubelet}) en cada node i xarxes virtuals internes (SDN).  
+
+    \item \textbf{El buit científic:}
+    Aquesta tendència va consolidar una falsa dicotomia tècnica en la literatura:  
+    \begin{itemize}
+        \item S'havia d'acceptar la penalització permanent de memòria i CPU d'un Kubernetes lleuger per mantenir el clúster viu.  
+        \item O bé s'havien d'utilitzar contenidors autònoms (\textit{standalone}) de manera aïllada, sacrificant per complet la gestió centralitzada i l'auto-recuperació davant de fallades.
+    \end{itemize}
+\end{enumerate}
+
+\section{L'Enfocament Natiu: El paradigma de Systemd, Quadlets i Ansible}
+Per trencar aquesta dicotomia, neix una iniciativa tècnica impulsada per Red Hat que planteja un canvi de paradigma fonamental: en lloc d'introduir un agent orquestrador extern (\texttt{kubelet}) que consumeixi recursos contínuament en un maquinari limitat, per què no delegar aquesta tasca al gestor de processos més madur i eficient que ja inclou Linux per defecte?  
+
+Aquí és on entra Systemd, el sistema d'inicialització estàndard de Linux. S'encarrega d'arrencar programes i reiniciar-los gairebé a l'instant si fallen. Històricament, integrar contenidors amb Systemd requeria l'enfocament \textit{Legacy} (escriure complexos fitxers \texttt{.service}). Actualment, la solució recau en els \textit{Quadlets}, una eina nativa de Podman que permet definir contenidors de manera declarativa. El sistema s'encarrega de traduir-ho automàticament a serveis, delegant el cicle de vida directament al \textit{kernel}.
 
 \textbf{Ansible i la simulació de Kubernetes:}
-Ansible és una eina d'automatització de les tecnologies de la informació que no requereix agents instal·lats a les màquines destí. Atès que Systemd i Podman només funcionen a nivell de màquina individual, es pot combinar Ansible amb aquestes tecnologies per replicar el comportament d'un orquestrador complet.
-En aquest model híbrid, cada component simula una part de Kubernetes:
+Atès que Systemd i Podman només actuen a nivell de màquina individual, l'arquitectura es completa amb Ansible, una eina d'automatització descentralitzada sense agents instal·lats. En combinar aquestes tecnologies, es pot replicar l'estabilitat d'un orquestrador sencer sense pagar-ne l'``impost arquitectònic'':
 
 \begin{itemize}
-    \item \textbf{El Pla de Control (\textit{Control Plane / Scheduler}):} Ansible actua com el cervell central, decidint on, quan i com s'ha de desplegar l'aplicació en múltiples nodes simultàniament mitjançant regles (\textit{Playbooks}).
-    \item \textbf{L'Agent del Node (\textit{Kubelet}):} Systemd substitueix el Kubelet, encarregant-se de l'auto-recuperació. Si un procés falla, Systemd ho detecta localment i el reinicia.
-    \item \textbf{El Motor d'Execució (\textit{Container Runtime}):} Podman executa l'aplicació.
-    \item \textbf{Els Manifestos Declaratius (YAML):} Els fitxers Quadlet d'extensió \texttt{.container} substitueixen els complexos manifestos de Kubernetes, descrivint com ha de ser l'aplicació de forma declarativa.
+    \item \textbf{El Pla de Control (\textit{Control Plane / Scheduler}):} Ansible actua com el cervell central. Mitjançant regles (\textit{Playbooks}), decideix on, quan i com s'ha de desplegar l'aplicació a la flota de nodes.
+    \item \textbf{L'Agent del Node (\textit{Kubelet}):} Systemd substitueix el \texttt{kubelet}, assumint l'auto-recuperació. Si el procés cau, ho detecta a nivell de nucli i el reinicia localment.
+    \item \textbf{El Motor d'Execució (\textit{Container Runtime}):} Podman s'encarrega d'executar l'aplicació sense dependre de cap dimoni.
+    \item \textbf{Els Manifestos Declaratius (YAML):} Els fitxers Quadlet (\texttt{.container}) substitueixen els complexos manifestos de Kubernetes, establint l'estat desitjat del contenidor.
 \end{itemize}
 
 \section{Transmissió de Dades i Protocols de Comunicació}
