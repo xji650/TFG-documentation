@@ -7,3 +7,65 @@
 %
 % Si el teu treball és de desenvolupament de software, comença amb una secció breu de requisits (funcionals i no funcionals).
 
+Aquest capítol detalla el disseny experimental empíric creat per avaluar i quantificar les diferències de rendiment entre Kubernetes (K3s) i l'arquitectura nativa (Systemd). L'enfocament es basa en una comparativa A/B automatitzada per garantir la reproductibilitat de les dades.
+
+\section{Disseny Iteratiu i Selecció de Protocols}
+Abans de comparar les arquitectures, l'estudi es va plantejar de manera iterativa per identificar el protocol de xarxa més eficient i evitar que la transmissió de dades es convertís en el coll d'ampolla de les proves.
+
+\begin{itemize}
+    \item \textbf{Fase 1: Exploració inicial de protocols (Entorn Nadiu):} Inicialment, era necessari determinar l'impacte dels protocols de comunicació (HTTP, gRPC, ZeroMQ) i el format de les dades (text pla vers binari) en el rendiment. Utilitzant un entorn base amb Systemd i la càrrega de treball MNIST (el node worker fa el cómput de les imatges del dataset), es van mesurar mètriques exhaustives (\textit{T\_Total, Throughput, Tasa d'èxit, RTT, T\_Proc, RAM\_Max, CPU\_Max i Payload\_MB}). L'anàlisi inicial va evidenciar ràpidament que la llibreria ZeroMQ combinada amb serialització binària oferia el màxim rendiment.
+    \item \textbf{Fase 2: El dilema de la serialització binària (Protobuf vers MessagePack):} Dins de l'ecosistema binari, va sorgir la necessitat d'avaluar diferents mètodes de serialització. Es va dissenyar una comparativa a quatre bandes: HTTP-JSON, gRPC-Protobuf, ZeroMQ-Protobuf i ZeroMQ-MessagePack. Tot i que Protobuf (inspirat en gRPC) té la reputació de ser extremadament ràpid, finalment es va optar per MessagePack a causa d'un problema tècnic específic amb les imatges del dataset MNIST:
+    \begin{itemize}
+        \item \textit{Sobrecàrrega de Protobuf:} Si la matriu de la imatge es defineix al fitxer \texttt{.proto} com una llista d'enters (\texttt{repeated int32}), la mida real del missatge es dispara de 784 bytes a més de 2 KB. Això consumeix una quantitat excessiva de CPU per empaquetar i desempaquetar cada píxel individualment. Tot i que es pot forçar l'ús del tipus \texttt{bytes} per mitigar-ho, fer-ho anul·la l'avantatge principal de Protobuf (el seu tipat estructurat fort).
+        \item \textit{Eficiència de MessagePack:} Aquest format permet enviar les dades directament com un bloc binari cru (\texttt{bin type}) des de les estructures de memòria, evitant la penalització de CPU i mantenint l'empaquetatge extremadament lleuger.
+    \end{itemize}
+    \item \textbf{Fase 3: Validació i selecció de l'orquestrador:} La decisió d'utilitzar ZeroMQ + MessagePack es va replicar i posar a prova en un entorn Kubernetes, obtenint-ne conclusions idèntiques pel que fa a l'eficiència del protocol. Per a la plataforma distribuïda, es va seleccionar explícitament K3s, ja que és la distribució certificada més lleugera de Kubernetes, dissenyada per minimitzar el consum de recursos a l'\textit{Edge}.
+    \item \textbf{Fase 4: Comparativa arquitectònica definitiva:} Un cop establert el protocol òptim (ZeroMQ-MessagePack) per garantir que la xarxa no fos el coll d'ampolla, i definit el programari distribuït (K3s), es va procedir a executar la comparativa d'estrès automatitzada final. Aquesta última fase és la que permet enfrontar en igualtat de condicions l'arquitectura nativa (Systemd) contra l'orquestrador (Kubernetes) per quantificar amb precisió l'``Impost Arquitectònic''.
+\end{itemize}
+
+\section{Disseny i Entrenament del Model d'IA (PyTorch)}
+Per garantir que la prova d'estrès generés una càrrega de processament d'imatges realista abans de l'avaluació de la infraestructura, es va dissenyar i entrenar un model d'Intel·ligència Artificial personalitzat, descartant l'ús d'un Perceptró Multicapa (MLP) bàsic en favor d'una Xarxa Neuronal Convolucional (CNN).
+
+\begin{itemize}
+    \item \textbf{Justificació de l'Arquitectura:} La decisió d'optar per una CNN respon a la seva superioritat en tasques de visió per computador, ja que permet aprofitar la correlació espacial dels píxels de les imatges.
+    
+    \item \textbf{Bloc d'Extracció de Característiques:} Està compost per dues capes convolucionals (\texttt{Conv2d}) que extreuen 32 i 64 mapes de característiques, respectivament. Cada convolució va seguida d'una funció d'activació no lineal (\texttt{ReLU}) i d'una capa d'agrupació (\texttt{MaxPool2d}) per reduir la dimensionalitat i el cost computacional.
+    
+    \item \textbf{Tolerància al Sobreajustament (\textit{Overfitting}):} S'ha introduït una capa de regularització (\textit{Dropout}) amb una probabilitat del 25\%, la qual apaga neurones aleatòriament durant la fase d'entrenament, forçant la xarxa a generalitzar en lloc de memoritzar les dades.
+    
+    \item \textbf{Bloc de Classificació:} Un cop aplanats els mapes de característiques mitjançant l'operació \texttt{view}, la informació es transmet a través de dues capes denses (\textit{Fully Connected} o \texttt{Linear}). Aquestes capes redueixen progressivament les dimensions fins a produir una sortida final de 10 nodes, que representen les probabilitats d'encert per als 10 dígits possibles (del 0 al 9).
+    
+    \item \textbf{Paràmetres d'Entrenament (MLOps):} L'optimització dels pesos de la xarxa neuronal s'ha dut a terme aplicant l'algoritme de Descens de Gradient Estocàstic (SGD), configurat amb una taxa d'aprenentatge de 0.01 i un impuls (\textit{momentum}) de 0.9. La funció de cost seleccionada ha estat l'Entropia Creuada (\texttt{CrossEntropyLoss}), i s'ha establert un bucle d'entrenament tancat de 5 èpoques processant les imatges en blocs (\textit{batch size}) de 64 unitats.
+\end{itemize}
+
+\section{Arquitectura i Estratègia de Desplegament en Entorns Aïllats}
+L'estudi s'estructura mitjançant un model descentralitzat compost per un node de control central i diversos nodes perimetrals (\textit{Workers}). Per garantir condicions idèntiques i simular un entorn \textit{Edge} aïllat o amb amplada de banda restringida (\textit{Air-gapped}), s'evita totalment l'ús de registres d'imatges públics (com Docker Hub). Tot el procés s'orquestra mitjançant Ansible seguint una estratègia d'empaquetat centralitzat: des del node mestre es construeix la imatge localment configurant els grups de control (\texttt{--cgroup-manager=cgroupfs}) i s'exporta com un artefacte autònom \texttt{.tar} per ser transferit a la flota.
+
+L'avaluació d'aquest artefacte s'ha dissenyat implementant primer l'enfocament natiu i, posteriorment, l'orquestrador distribuït:
+
+\begin{itemize}
+    \item \textbf{Desplegament Natiu (Systemd):} S'ha optat per una execució sense privilegis d'administrador (\textit{rootless}) per maximitzar la seguretat. El procés automatitzat habilita primer la persistència de l'usuari als nodes (mitjançant \texttt{loginctl enable-linger}), la qual cosa permet que els serveis funcionin autònomament en segon pla encara que la sessió es tanqui. Un cop carregada la imatge localment (\texttt{podman load}), la infraestructura s'instancia de forma nativa a través de fitxers declaratius Quadlet. Es defineix tant la subxarxa aïllada (\texttt{red.network}) com el servei de l'aplicació (\texttt{worker.container}), delegant-ne l'execució, els reinicis i l'auto-recuperació directament al \textit{kernel} del sistema operatiu mitjançant Systemd.
+    \item \textbf{Desplegament Distribuït (Kubernetes / K3s):} Per a la representació del model d'orquestració clàssic, es va descartar l'ús del Kubernetes estàndard i es va seleccionar K3s. Aquesta decisió es justifica perquè K3s és una distribució oficialment retallada per a entorns IoT/Edge (elimina mòduls \textit{Cloud} innecessaris i substitueix la base de dades \texttt{etcd} per SQLite), sent el rival més just i optimitzat per a aquesta comparativa. L'artefacte es carrega directament a la memòria cau del motor de l'orquestrador (\texttt{k3s ctr images import}). Per replicar el comportament pur perimetral, el manifest YAML prescindeix d'un \textit{Deployment} genèric i utilitza un \textit{DaemonSet}, garantint exactament una instància del model d'IA per cada node. A més, s'han configurat regles d'afinitat (\textit{NodeAffinity}) per prohibir-ne l'execució al pla de control, assegurant que tota la càrrega computacional recaigui exclusivament als \textit{Workers}, forçant l'ús de la imatge local amb la directiva \texttt{imagePullPolicy: Never}.
+\end{itemize}
+
+\section{Automatització i Reproduïbilitat (Pipeline d'execució)}
+Per evitar biaixos manuals en la recollida de dades, s'ha desenvolupat un conjunt de \textit{scripts} en Bash que executen tot el cicle de vida de l'experiment:
+
+\begin{itemize}
+    \item \textbf{Neteja i Desplegament:} S'esborra qualsevol rastre de proves anteriors i es desplega la infraestructura des de zero.
+    \item \textbf{Temps d'Estabilització:} S'introdueixen pauses controlades (de fins a 15 segons en K3s) perquè els processos en segon pla de l'orquestrador s'estabilitzin abans de mesurar.
+    \item \textbf{Bucle d'Estrès:} S'executen 5 iteracions consecutives de proves de xarxa a màxim rendiment.
+    \item \textbf{Extracció al Data Lake:} Les mètriques s'extreuen mitjançant expressions regulars (Regex) i s'aboquen automàticament a un fitxer CSV centralitzat, actuant com a base de dades històrica.
+\end{itemize}
+
+\section{Tècniques de Mesura i Mètriques Avaluades}
+L'avaluació es divideix en els tres eixos fonamentals que determinen l'eficiència a l'\textit{Edge}:
+
+\begin{itemize}
+    \item \textbf{Consum Base de RAM (Sobrecost Operatiu):} Per mesurar el cost real d'encendre la infraestructura, la captura de memòria es fa interrogant directament el sistema operatiu (\texttt{free -m}) just abans d'enviar trànsit de xarxa. Això aïlla el consum exclusiu dels dimonis de gestió respecte al consum del model d'IA.
+    \item \textbf{Resiliència (Enginyeria del Caos):} Es mesura el Temps Mitjà de Recuperació (MTTR) forçant un escenari de fallada crítica. En K3s s'executa una eliminació abrupta del Pod (\texttt{kubectl delete pod --force}), i en Systemd es fulmina el contenidor (\texttt{podman kill}). Es calcula el temps exacte des de l'ordre de destrucció fins que el sistema torna a estar llest per rebre peticions.
+    \item \textbf{Rendiment de Xarxa (\textit{Throughput}):} Es mesura la quantitat d'imatges processades per segon sotmetent el node a màxima càrrega per avaluar com els túnels d'encapsulament (SDN) penalitzen l'ample de banda respecte a l'accés natiu a la targeta de xarxa.
+\end{itemize}
+
+\section{Tractament de Dades (\textit{Data Cleansing})}
+Durant l'execució de les proves de resiliència en Kubernetes, es va registrar un valor atípic extrem (\textit{Outlier}) on el sistema va trigar més de 260.000 ms (uns 4 minuts) a recuperar-se a causa d'un bloqueig temporal (\textit{lock}) en l'alliberament de la IP virtual per part del connector de xarxa Flannel. Per garantir l'equitat i la integritat estadística de la comparativa, s'ha aplicat una tècnica d'imputació, descartant aquest error d'infraestructura puntual perquè no distorsioni la mitjana del comportament general de l'orquestrador.
