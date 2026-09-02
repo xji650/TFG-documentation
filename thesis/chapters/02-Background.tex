@@ -59,7 +59,19 @@ La informació es pot estructurar en dos grans formats. D'una banda, el text pla
 L'aplicació pràctica d'aquestes optimitzacions es materialitza en el processament d'Intel·ligència Artificial al límit de la xarxa. Els models d'aprenentatge profund (\textit{Deep Learning}) requereixen allotjar estructures de dades complexes (tensors) a la memòria RAM per a la seva execució. Qualsevol sobrecost d'infraestructura (com l'``Impost Arquitectònic'' d'un orquestrador) sostreu recursos de computació directament al model d'IA, reduint-ne el rendiment.
 
 Per quantificar aquest impacte de manera empírica, l'estudi requereix una càrrega de treball reconeguda i estandarditzada. Per això, el trànsit de xarxa se simula utilitzant el conjunt de dades MNIST, un estàndard clàssic de reconeixement de dígits manuscrits que permet enviar un flux constant d'imatges als contenidors avaluats.
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.75\textwidth]{sources/dataset-card.png}
+    \caption{Datasets MNIST amb imatges de dígits manuscrits classificats.}
+    \label{fig:mnist_dataset}
+\end{figure}
 
 A nivell de programari d'IA, tot i que TensorFlow i PyTorch són els grans referents del mercat, s'ha optat per PyTorch. La seva arquitectura basada en grafs computacionals dinàmics ofereix una execució més àgil i un ús de memòria més controlable, unes característiques que s'alineen perfectament amb les restriccions de maquinari pròpies dels nodes \textit{Edge}.
 
 Finalment, l'arquitectura de la xarxa neuronal determina la intensitat del processament. Tot i que una opció inicial era utilitzar un simple Perceptró Multicapa (MLP), s'ha implementat una Xarxa Neuronal Convolucional (CNN). Aquesta decisió respon a la necessitat de generar un escenari realista de visió per computador: les complexes operacions matricials d'una CNN estressen de manera efectiva la CPU i la RAM del dispositiu. Això assegura que la prova no només mesuri l'enviament de dades, sinó que reprodueixi una càrrega de càlcul intensiva que reveli amb precisió com la penalització de l'orquestrador afecta la capacitat d'inferència de la màquina.
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{sources/mlp_cnn_architecture.png}
+    \caption{Arquitectura comú de xarxes MLP y CNN dissenyades per a clasificació y regresió. Font: Adaptada de \cite{xiang2019robust}.}
+    \label{fig:arquitectura_mlp_cnn}
+\end{figure}
