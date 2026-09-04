@@ -7,3 +7,45 @@
 %   4. Estructura del document: un paràgraf breu resumint què conté cada capítol.
 
 
+Aquest Treball de Fi de Grau (TFG) presenta una avaluació comparativa entre dues arquitectures d'execució de contenidors en entorns Edge: una solució d'execució nativa i directa basada en Systemd i un orquestrador modern com Kubernetes (en la seva versió lleugera K3s). 
+
+\section{Motivació}
+Als entorns perifèrics, els dispositius operen amb un maquinari molt limitat. Aquesta realitat xoca amb el desplegament d'orquestradors moderns com Kubernetes, els quals exigeixen mantenir actius múltiples processos en segon pla (com el kubelet o els controladors de xarxa) només per funcionar. Aquest consum permanent actua com un llast de memòria i CPU que retalla dràsticament el marge disponible per processar tasques exigents, com ara la Intel·ligència Artificial. Per això, resulta rellevant investigar alternatives d'execució directa a nivell de sistema operatiu per esbrinar si es pot recuperar aquesta potència perduda sense sacrificar la fiabilitat de l'aplicació.
+
+\section{Objectius}
+L'objectiu principal és avaluar el sobrecost de rendiment que introdueix Kubernetes (K3s) en maquinari modest en executar càrregues d'Intel·ligència Artificial (específicament, l'entrenament d'un model MNIST amb PyTorch), comparant-lo amb una solució d'execució directa orquestrada mitjançant la combinació de Systemd, Ansible i Podman.
+
+Per assolir-ho, es plantegen els següents objectius específics:
+\begin{itemize}
+    \item Mesurar l'impacte de la infraestructura avaluant mètriques base com el temps de desplegament (T\_deploy), la CPU en repòs i la memòria RAM en repòs a nivell de sistema operatiu.
+    \item Avaluar el rendiment de xarxa sotmetent el sistema a càrrega d'estrès amb quatre protocols de comunicació diferents: HTTP-JSON, gRPC-Protobuf, ZeroMQ-Protobuf i ZeroMQ-MessagePack.
+    \item Analitzar l'eficiència i la penalització de la xarxa virtual recopilant mètriques detallades de comunicació, incloent-hi el Temps Total, el \textit{Throughput}, la Taxa d'Èxit (\%), la latència RTT, el Temps de Processament (T\_Proc), els pics màxims de RAM i CPU, i la mida del Payload en MB.
+    \item Determinar la velocitat de recuperació davant d'errors (MTTR) eliminant contenidors de manera abrupta per forçar la reacció del sistema i comparar la resiliència nativa enfront de la de l'orquestrador.
+    \item Automatitzar els desplegaments i l'extracció de totes aquestes dades mitjançant \textit{scripts} per generar un conjunt de resultats estructurat i assegurar que l'experiment sigui totalment reproduïble.
+\end{itemize}
+
+\section{Abast}
+L'estudi es delimita a l'avaluació nodes Edge aïllats, comparant la versió lleugera de Kubernetes (K3s) amb la integració de Podman i Systemd mitjançant Quadlets executant càrregues d'entrenament d'un model d'intel·ligència artificial basat en el conjunt de dades MNIST amb PyTorch a cada node worker. S'inclou l'execució de proves d'estrès automatitzades sobre diversos protocols (HTTP-JSON, gRPC-Protobuf, ZeroMQ-Protobuf i ZeroMQ-MessagePack).
+
+L'avaluació quantitativa es divideix en dues categories principals estractes automàticament: d'una banda, les mètriques d'infraestructura (systemd i kubernetes) per calcular l'impacte base, incloent-hi el temps de desplegament (T\_deploy), el consum de CPU i RAM en repòs, i el temps mitjà de recuperació (MTTR); de l'altra, les mètriques detallades de xarxa (HTTP-JSON, gRPC-Protobuf, ZeroMQ-Protobuf i ZeroMQ-MessagePack) per analitzar l'eficiència de la comunicació sota càrrega, recollint el temps total, la capacitat de processament (Throughput), la taxa d'èxit (\%), la latència (RTT), el temps de processament (T\_Proc), els pics màxims de recursos (RAM\_Max, CPU\_Max) i la mida de la càrrega útil transferida (Payload\_MB).
+
+Queden excloses d'aquest treball les distribucions tradicionals de Kubernetes de gran format orientades al núvol (Cloud), l'estudi d'arquitectures d'alta disponibilitat (HA) per al node de control i l'avaluació d'altres motors de contenidors estructurats amb dimoni, com ara Docker.
+
+\section{Estructura del document}
+Aquest document s'estructura en set capítols principals que descriuen el disseny, desenvolupament i avaluació empírica del projecte:
+
+\begin{description}
+    \item[Capítol 1 (Introducció):] Exposa la motivació, els objectius principals i l'abast del projecte, presentant la problemàtica del sobrecost arquitectònic en entorns perimetrals.
+    
+    \item[Capítol 2 (Marc Teòric):] Defineix els conceptes tècnics fonamentals, incloent-hi els motors de contenidors, els protocols de xarxa avaluats, i l'arquitectura de solucions com Systemd, Ansible i Kubernetes.
+    
+    \item[Capítol 3 (Estat de l'Art):] Revisa el context tecnològic actual i les aproximacions existents a la indústria per gestionar càrregues de treball en dispositius \textit{Edge} amb recursos limitats.
+    
+    \item[Capítol 4 (Metodologia):] Detalla el disseny de l'experiment, descrivint l'entorn de proves, les eines utilitzades i definint amb precisió les mètriques d'infraestructura i comunicació a monitorar.
+    
+    \item[Capítol 5 (Implementació):] Explica en profunditat el desenvolupament de la solució, des de la creació dels contenidors i la integració nativa amb Quadlets, fins a l'automatització total dels desplegaments i l'extracció de dades.
+    
+    \item[Capítol 6 (Resultats):] Presenta i analitza les dades obtingudes, contrastant de manera directa el consum de memòria, la capacitat de processament de xarxa (\textit{Throughput}) i la resiliència (MTTR) d'ambdues arquitectures.
+    
+    \item[Capítol 7 (Conclusions):] Avalua l'acompliment dels objectius marcats, consolida el veredicte sobre els compromisos tècnics (trade-offs) i proposa línies futures de treball.
+\end{description}

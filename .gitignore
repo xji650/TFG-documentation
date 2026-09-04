@@ -10,7 +10,6 @@
 *.lof
 *.lot
 *.synctex.gz
-thesis/main.pdf
 presentation/slides.pdf
 presentation/*.nav
 presentation/*.snm

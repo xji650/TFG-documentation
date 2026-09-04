@@ -7,3 +7,20 @@
 %
 % Acaba amb un paràgraf que posicioni explícitament la teva proposta respecte a aquesta revisió ("a diferència de X, aquest treball...") o bé una taula comparativa de les solucions existents i la teva.
 
+A continuació s'exposa la revisió de l'estat de l'art organitzada segons les tendències actuals en la gestió de contenidors a l'Edge Computing, analitzant-ne les aportacions i limitacions.
+
+\section{Solucions d'Orquestració Lleugera a l'\textit{Edge} (K3s, MicroK8s)}
+Gran part de la literatura recent aposta per adaptar l'estàndard de la indústria mitjançant distribucions reduïdes de Kubernetes com K3s \cite{yakubov2025comparative}. Aquests treballs destaquen el manteniment de l'ecosistema declaratiu i l'escalabilitat horitzontal. No obstant això, estudis recents sobre consum de recursos a l'\textit{Edge} assenyalen que aquests orquestradors continuen imposant un ``Impost Arquitectònic'' permanent a causa dels processos de control (com el \texttt{kubelet} o la xarxa SDN) \cite{bellavista2023performance}.
+
+\section{Execució Nativa de Contenidors (\textit{Standalone})}
+D'altra banda, treballs previs plantegen prescindir de l'orquestració complexa i executar aplicacions mitjançant motors autònoms (Docker o Podman) per prioritzar la potència de càlcul \cite{eitt2026runtime}. Aquest enfocament maximitza el rendiment del maquinari en oferir accés a la xarxa nativa, però investigacions posteriors conclouen que se sacrifica dràsticament la tolerància a fallades i la capacitat de gestionar actualitzacions distribuïdes \cite{singh2025standalone}.
+
+\section{Avaluació de Protocols de Comunicació per a IA}
+En l'àmbit de la transmissió de grans volums de dades (com tensors d'IA), recerques recents comparen protocols com gRPC o ZeroMQ, identificant l'enviament asíncron amb serialització binària com la solució més eficient en latència \cite{martinez2026programmable}. Tanmateix, aquestes proves solen realitzar-se en entorns ideals, sense analitzar com l'encapsulament de paquets d'un orquestrador en segon pla pot arribar a degradar aquest rendiment.
+
+\section{El buit que omple aquest treball}
+Tot i que el recent paradigma de delegar el cicle de vida al \textit{kernel} (utilitzant Podman integrat amb \textbf{Systemd} i orquestrat via \textbf{Ansible}) s'ha presentat com una solució tecnològica prometedora, fins avui hi ha una \textbf{falta de proves empíriques}: no existeixen estudis acadèmics ni proves de rendiment que hagin mesurat exactament quants recursos s'estalvien en aplicar aquesta arquitectura novedosa.
+
+Aquest treball omple precisament aquest buit científic quantificant, per primera vegada i amb dades objectives, el sobrecost operatiu de Kubernetes. L'estudi no es limita a proposar teòricament l'ús de Systemd, sinó que aporta la mètrica exacta del rendiment que es recupera en descartar l'orquestrador tradicional. 
+
+Avaluant empíricament ambdues plataformes sota càrregues d'estrès, el treball demostra amb xifres inèdites com l'alternativa nativa de Systemd minimitza el consum de memòria RAM en repòs, elimina el coll d'ampolla de les xarxes virtuals (SDN) per maximitzar el processament brut, i accelera l'auto-recuperació davant de fallades crítiques. D'aquesta manera, la investigació proporciona la justificació empírica que faltava a la indústria per validar Systemd com el substitut òptim de Kubernetes en escenaris d'Intel·ligència Artificial on cada megabyte compta.

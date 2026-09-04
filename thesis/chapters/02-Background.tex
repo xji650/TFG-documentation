@@ -1,3 +1,77 @@
 % Marc teòric.
 %
 
+Aquest apartat estableix la base teòrica necessària per comprendre l'evolució dels contenidors i l'impacte arquitectònic que diferents models d'orquestració tenen sobre l'execució de càrregues d'Intel·ligència Artificial en entorns amb recursos limitats.
+
+\section{Tecnologies de Virtualització i Contenidors}
+Els contenidors són una tecnologia de virtualització a nivell de sistema operatiu que permet empaquetar una aplicació i totes les seves dependències en una unitat estandarditzada. A diferència de les màquines virtuals, els contenidors comparteixen el nucli (\textit{kernel}) del sistema amfitrió, la qual cosa els fa molt més lleugers, ràpids d'iniciar i eficients en l'ús de CPU i memòria.
+
+\textbf{Arquitectures amb dimoni i sense dimoni (\textit{Daemonless}):}
+Tradicionalment, motors com Docker funcionen basant-se en un dimoni (\textit{daemon}), un procés central en segon pla (generalment executat amb privilegis d'administrador) que gestiona tot el cicle de vida dels contenidors. Si aquest dimoni cau, tot el sistema s'atura. Com a evolució, sorgeix Podman, un motor de contenidors sense dimoni. Podman executa els contenidors interactuant directament amb el nucli del sistema mitjançant processos independents \cite{podman_pod}, fet que millora la seguretat, redueix el consum en repòs i permet una integració molt més natural amb el sistema operatiu de la màquina.
+
+\section{L'Evolució de l'Orquestració i la Falsa Dicotomia a l'\textit{Edge}}
+L'orquestració automatitza el desplegament, l'escalabilitat i la resiliència de múltiples contenidors. Històricament, l'evolució d'aquests sistemes i el seu mapa mental a la indústria ha travessat diferents fases:  
+
+\begin{enumerate}
+    \item \textbf{La Guerra dels Orquestradors i el domini del \textit{Cloud}:}
+    En els inicis de la contenerització, diverses tecnologies (com Docker Swarm o Apache Mesos) van competir per liderar l'orquestració. Cap a l'any 2018, Kubernetes va guanyar aquesta batalla tecnològica de forma absoluta, convertint-se en l'estàndard indiscutible per als grans centres de dades (\textit{Cloud}).
+
+    \item \textbf{El dogma de ``Kubernetes cada vegada més lleuger'':}
+    Quan va sorgir la necessitat d'executar càrregues de treball als extrems de la xarxa (\textit{Edge Computing}), la indústria va assumir una visió de túnel: l'única forma de fer-ho era ``encongir'' Kubernetes. Els esforços d'enginyeria es van centrar exclusivament a retallar components massius per encabir l'orquestrador en dispositius petits, donant lloc a distribucions com K3s o MicroK8s. Tanmateix, totes elles mantenien obligatòriament l'arquitectura base: un procés resident (\texttt{kubelet}) en cada node i xarxes virtuals internes (SDN).  
+
+    \item \textbf{El buit científic:}
+    Aquesta tendència va consolidar una falsa dicotomia tècnica en la literatura:  
+    \begin{itemize}
+        \item S'havia d'acceptar la penalització permanent de memòria i CPU d'un Kubernetes lleuger per mantenir el clúster viu.  
+        \item O bé s'havien d'utilitzar contenidors autònoms (\textit{standalone}) de manera aïllada, sacrificant per complet la gestió centralitzada i l'auto-recuperació davant de fallades.
+    \end{itemize}
+\end{enumerate}
+
+\section{L'Enfocament Natiu: El paradigma de Systemd, Quadlets i Ansible}
+Per trencar aquesta dicotomia, neix una iniciativa tècnica impulsada per Red Hat que planteja un canvi de paradigma fonamental: en lloc d'introduir un agent orquestrador extern (\texttt{kubelet}) que consumeixi recursos contínuament en un maquinari limitat, per què no delegar aquesta tasca al gestor de processos més madur i eficient que ja inclou Linux per defecte?  
+
+Aquí és on entra Systemd, el sistema d'inicialització estàndard de Linux. S'encarrega d'arrencar programes i reiniciar-los gairebé a l'instant si fallen. Històricament, integrar contenidors amb Systemd requeria l'enfocament \textit{Legacy} (escriure complexos fitxers \texttt{.service}). Actualment, la solució recau en els \textit{Quadlets} \cite{podman_systemd_unit}, una eina nativa de Podman que permet definir contenidors de manera declarativa. El sistema s'encarrega de traduir-ho automàticament a serveis, delegant el cicle de vida directament al \textit{kernel}.
+
+\textbf{Ansible i la simulació de Kubernetes:}
+Atès que Systemd i Podman només actuen a nivell de màquina individual, l'arquitectura es completa amb Ansible, una eina d'automatització descentralitzada sense agents instal·lats. En combinar aquestes tecnologies, es pot replicar l'estabilitat d'un orquestrador sencer sense pagar-ne l'``impost arquitectònic'':
+
+\begin{itemize}
+    \item \textbf{El Pla de Control (\textit{Control Plane / Scheduler}):} Ansible actua com el cervell central. Mitjançant regles (\textit{Playbooks}), decideix on, quan i com s'ha de desplegar l'aplicació a la flota de nodes.
+    \item \textbf{L'Agent del Node (\textit{Kubelet}):} Systemd substitueix el \texttt{kubelet}, assumint l'auto-recuperació. Si el procés cau, ho detecta a nivell de nucli i el reinicia localment.
+    \item \textbf{El Motor d'Execució (\textit{Container Runtime}):} Podman s'encarrega d'executar l'aplicació sense dependre de cap dimoni.
+    \item \textbf{Els Manifestos Declaratius (YAML):} Els fitxers Quadlet (\texttt{.container}) substitueixen els complexos manifestos de Kubernetes, establint l'estat desitjat del contenidor.
+\end{itemize}
+
+\section{Transmissió de Dades i Protocols de Comunicació}
+En entorns perifèrics, l'eficiència amb què es mouen les dades és tan important com com es processen.
+
+\textbf{Formats d'enviament de dades:}
+La informació es pot estructurar en dos grans formats. D'una banda, el text pla (com JSON o XML), que és fàcilment llegible per humans però requereix empaquetar molta informació repetitiva i consumeix temps de CPU per ser processat. De l'altra, els formats binaris (com MessagePack o Protocol Buffers), que comprimeixen les dades a nivell de bits. Són il·legibles per a l'ull humà, però resulten extremadament lleugers i ràpids de serialitzar per les màquines, reduint la latència.
+
+\textbf{Protocols de comunicació:}
+\begin{itemize}
+    \item \textbf{HTTP/REST:} És l'estàndard web tradicional. Sol utilitzar format JSON, és fàcil d'implementar però pesat per a comunicacions massives degut a la càrrega de les capçaleres en cada petició.
+    \item \textbf{gRPC:} Desenvolupat per Google, utilitza el protocol HTTP/2 i serialització binària (Protobuf). Permet múltiples crides simultànies i és molt eficient per a microserveis que necessiten respostes estructurades.
+    \item \textbf{ZeroMQ:} Més que un protocol estàndard, és una llibreria de missatgeria d'alt rendiment. No utilitza un servidor intermediari (\textit{brokerless}) i permet l'enviament asíncron directe de memòria a memòria, sent una de les opcions més ràpides i lleugeres quan es requereix processar milers de missatges per segon en xarxes locals.
+\end{itemize}
+
+\section{Càrregues de treball exigents: La necessitat d'optimitzar per a la IA}
+L'aplicació pràctica d'aquestes optimitzacions es materialitza en el processament d'Intel·ligència Artificial al límit de la xarxa. Els models d'aprenentatge profund (\textit{Deep Learning}) requereixen allotjar estructures de dades complexes (tensors) a la memòria RAM per a la seva execució. Qualsevol sobrecost d'infraestructura (com l'``Impost Arquitectònic'' d'un orquestrador) sostreu recursos de computació directament al model d'IA, reduint-ne el rendiment.
+
+Per quantificar aquest impacte de manera empírica, l'estudi requereix una càrrega de treball reconeguda i estandarditzada. Per això, el trànsit de xarxa se simula utilitzant el conjunt de dades MNIST, un estàndard clàssic de reconeixement de dígits manuscrits que permet enviar un flux constant d'imatges als contenidors avaluats \cite{tensorflow_mnist}.
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.75\textwidth]{sources/dataset-card.png}
+    \caption{Datasets MNIST amb imatges de dígits manuscrits classificats.}
+    \label{fig:mnist_dataset}
+\end{figure}
+
+A nivell de programari d'IA, tot i que TensorFlow i PyTorch són els grans referents del mercat, s'ha optat per PyTorch \cite{pytorch_mnist_guide}. La seva arquitectura basada en grafs computacionals dinàmics ofereix una execució més àgil i un ús de memòria més controlable, unes característiques que s'alineen perfectament amb les restriccions de maquinari pròpies dels nodes \textit{Edge}.
+
+Finalment, l'arquitectura de la xarxa neuronal determina la intensitat del processament. Tot i que una opció inicial era utilitzar un simple Perceptró Multicapa (MLP), s'ha implementat una Xarxa Neuronal Convolucional (CNN). Aquesta decisió respon a la necessitat de generar un escenari realista de visió per computador: les complexes operacions matricials d'una CNN estressen de manera efectiva la CPU i la RAM del dispositiu. Això assegura que la prova no només mesuri l'enviament de dades, sinó que reprodueixi una càrrega de càlcul intensiva que reveli amb precisió com la penalització de l'orquestrador afecta la capacitat d'inferència de la màquina.
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{sources/mlp_cnn_architecture.png}
+    \caption{Arquitectura comú de xarxes MLP y CNN dissenyades per a clasificació y regresió. Font: Adaptada de \cite{xiang2019robust}.}
+    \label{fig:arquitectura_mlp_cnn}
+\end{figure}

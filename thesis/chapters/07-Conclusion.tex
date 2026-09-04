@@ -6,3 +6,34 @@
 %   3. Limitacions conegudes.
 %   4. Línies de treball futur concretes (no genèriques).
 
+\section{Assoliment d'Objectius}
+S'han complert íntegrament els objectius marcats a la Introducció:
+\begin{itemize}
+    \item \textbf{Automatització MLOps:} S'ha implementat un flux de treball capaç d'entrenar una Xarxa Neuronal Convolucional (CNN) localment i distribuir-la mitjançant Ansible cap a nodes perimetrals basats en contenidors \textit{rootless} (Podman).
+    \item \textbf{Avaluació de Protocols:} S'ha demostrat empíricament la ineficiència dels estàndards web (HTTP/JSON) per a la transmissió de tensors, identificant la serialització binària dinàmica com a requisit fonamental.
+    \item \textbf{Comparativa d'Orquestradors:} S'ha dissenyat un entorn d'Avaluació del Caos (\textit{Chaos Testing}) automàtic que ha permès extreure mètriques precises sobre l'ús de CPU, memòria i resiliència tant en Systemd com en Kubernetes (K3s).
+\end{itemize}
+
+\section{Contribucions Principals}
+L'estudi aporta un marc de decisió tècnica clar basat en dades històriques reals:
+\begin{itemize}
+    \item \textbf{El paradigma ZeroMQ + MessagePack + Zero-Copy:} S'ha consolidat aquesta tríada com l'arquitectura de transport òptima a l'Edge. Elimina els colls d'ampolla del parseig de text, redueix la petjada de memòria a 280 MB sota estrès màxim i permet processar més de 9.000 imatges per segon en entorns natius.
+    \item \textbf{Quantificació de l'"Impost Arquitectònic":} S'ha mesurat el cost real de desplegar Kubernetes en dispositius limitats. K3s incrementa el consum de RAM en repòs un 16\% (~120 MB addicionals), triplica el temps de recuperació local (1.473 ms vers 491 ms) i redueix l'amplada de banda efectiva un 30\% a causa de l'encapsulament de la seva xarxa virtual CNI (Flannel).
+    \item \textbf{Matriu de Decisió:} Systemd es dictamina com la solució per a dispositius \textit{Standalone} aïllats on els recursos físics són crítics. Kubernetes justifica la seva penalització de rendiment exclusivament en flotes distribuïdes on la gestió declarativa centralitzada és imperativa.
+\end{itemize}
+
+\section{Limitacions Conegudes}
+Tot i el rigor metodològic aplicat mitjançant el registre automatitzat (Data Lake), l'estudi presenta limitacions inherents al seu disseny:
+\begin{itemize}
+    \item \textbf{Homogeneïtat del Maquinari:} Les proves s'han executat en màquines virtuals basades en arquitectura x86\_64 (Ubuntu). No s'ha validat l'impacte tèrmic ni els colls d'ampolla específics en arquitectures ARM pures altament restringides (ex. Raspberry Pi).
+    \item \textbf{Topologia de Xarxa Ideal:} L'entorn opera sota una xarxa local d'alta disponibilitat (LAN). A l'Edge real (p. ex. xarxes 4G/5G industrials), factors com la pèrdua de paquets o el \textit{jitter} extrem podrien alterar la fiabilitat de ZeroMQ.
+    \item \textbf{Complexitat del Model d'IA:} La CNN utilitzada (MNIST) és un model fundacional lleuger. El pes dels pesos neuronals i el consum de memòria ramificarien exponencialment si s'utilitzessin models de Llenguatge Gran (LLMs) o xarxes de detecció d'objectes complexes.
+\end{itemize}
+
+\section{Línies de Treball Futur}
+A partir d'aquesta arquitectura base, s'obren diverses vies d'investigació per optimitzar el rendiment perimetral:
+\begin{itemize}
+    \item \textbf{Substitució del CNI per eBPF:} Reemplaçar Flannel per connectors de xarxa basats en eBPF (com Cilium) per eludir l'encapsulament IP i intentar reduir o eliminar la penalització del 30\% de rendiment a K3s.
+    \item \textbf{Integració d'Acceleradors Maquinari (GPUs/NPUs):} Ampliar els \textit{playbooks} d'Ansible per exposar directament acceleradors físics cap als contenidors Podman i K3s, avaluant com l'orquestració afecta la latència en operacions tensorials pures.
+    \item \textbf{Inclusió de \textit{Brokers} Lleugers a l'Edge:} Substituir l'arquitectura P2P (\textit{Request-Reply}) per un model de publicació-subscripció utilitzant \textit{brokers} d'alt rendiment (com NATS o MQTT) per testejar topologies on múltiples orígens de dades (sensors IoT) alimenten el node d'inferència.
+\end{itemize}

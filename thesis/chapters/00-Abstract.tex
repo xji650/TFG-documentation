@@ -6,3 +6,14 @@
 %   - Quin mètode o enfocament s'ha seguit?
 %   - Quins resultats principals s'han obtingut?
 %   - Quina és la conclusió clau?
+
+
+En l'Edge Computing, els dispositius perimetrals tenen recursos extremadament limitats. El desplegament d'orquestradors moderns de contenidors genera una reserva permanent de memòria i CPU que redueix significativament el marge disponible per processar càrregues de treball exigents, com ara la Intel·ligència Artificial. 
+
+L'objectiu principal és avaluar el sobrecost de rendiment que introdueix Kubernetes en maquinari modest en comparació amb una solució d'execució directa basada en Systemd, per tal d'entendre quin sistema compensa més.
+
+En quant a la metodologia, s'han executat proves d'estrès automatitzades per a ambdues arquitectures utilitzant els diferents protocols de comunicació com http-json, grpc-protobuf i ZeroMQ. L'avaluació s'ha realitzat mesurant el consum de RAM en repòs, la degradació del rendiment de xarxa (Throughput), i la capacitat d'auto-recuperació aplicant l'eliminació de processos (kill-9) per calcular el Temps Mitjà de Recuperació (MTTR).  
+
+Els resultats demostren que l'adopció de Kubernetes penalitza significativament els recursos disponibles al node perimetral. L'orquestrador incrementa l'ús base de memòria en un 16\% (aproximadament 850 MB enfront dels 730 MB de Systemd) per la necessitat de mantenir actius els seus processos de control, i la seva capa de xarxa virtual (SDN) redueix el rendiment de processament en un 30\% (caient a unes 6.500 imatges per segon enfront de les 9.300 assolides nativament). En termes d'auto-recuperació, la gestió a nivell de sistema operatiu de Systemd assoleix reiniciar els serveis caiguts tres vegades més ràpid (~490 ms) que el model distribuït de Kubernetes (~1600 ms).
+
+Systemd és la solució idònia per a nodes Edge aïllats on el rendiment brut i la latència són crítics. El consum addicional de recursos que imposa Kubernetes només es justifica en entorns on prima la reducció de la complexitat de gestió, com ara flotes distribuïdes que requereixen actualitzacions declaratives i orquestració centralitzada. 

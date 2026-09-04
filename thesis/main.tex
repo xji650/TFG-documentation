@@ -1,7 +1,8 @@
 \documentclass[a4paper,11pt]{book}
 
 \input{preamble}
-
+\usepackage{graphicx}
+\usepackage{parskip}
 \begin{document}
 
 %===========================================================================
@@ -21,14 +22,14 @@
 \markboth{Acknowledgements}{Acknowledgements}
 \input{chapters/Acknowledgements}
 
-\tableofcontents
-\listoffigures
-\listoftables
-
 \chapter*{Abstract}
 \addcontentsline{toc}{chapter}{Abstract}
 \markboth{Abstract}{Abstract}
 \input{chapters/00-Abstract}
+
+\tableofcontents
+\listoffigures
+\listoftables
 
 %===========================================================================
 % Cos del treball
@@ -68,7 +69,8 @@
 %===========================================================================
 \backmatter
 
-\bibliography{tfg.bib}
+\bibliographystyle{unsrt}
+\bibliography{tfg}
 
 % TODO: add appendices if needed
 

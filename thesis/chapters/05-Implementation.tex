@@ -7,3 +7,231 @@
 %
 % No cal incloure el codi complet: mostra només fragments rellevants amb el paquet listings.
 
+Aquest capítol detalla la implementació tècnica de l'entorn de proves, descrivint l'arquitectura de programari, les eines de desenvolupament utilitzades i els procediments d'automatització dissenyats per extreure dades comparatives fiables.
+\section{Tecnologies, Llenguatges i Eines Utilitzades}
+\begin{itemize}
+    \item \textbf{Ansible:} Eina central per orquestrar la preparació de la infraestructura en ambdós entorns. Permet la injecció dinàmica de variables (com \texttt{experimento\_path}) per avaluar múltiples protocols de xarxa de manera desatesa.  
+    \item \textbf{Podman i Systemd:} Tecnologies base per a l'arquitectura nativa. Podman construeix les imatges ajustant el gestor de recursos (\texttt{--cgroup-manager=cgroupfs}) i les executa en mode \textit{rootless}. El cicle de vida es delega a fitxers declaratius Quadlet gestionats per Systemd.  
+    \item \textbf{K3s i \texttt{kubectl}:} Distribució lleugera de Kubernetes utilitzada com a referència d'orquestrador perimetral.  
+    \item \textbf{Python (PyTorch i Lògica de Xarxa):} Llenguatge principal de programació del projecte. S'ha utilitzat per desenvolupar tota la lògica dels nodes mestre i treballador (\textit{Master/Worker}), i per implementar els diferents protocols de comunicació avaluats (HTTP-JSON, gRPC, ZeroMQ). A més, s'ha utilitzat programació en Python per automatitzar la descàrrega del conjunt de dades MNIST del núvol i per dissenyar, entrenar i exportar el model d'Intel·ligència Artificial mitjançant la llibreria especialitzada PyTorch.
+    \item \textbf{Bash:} Llenguatge utilitzat per construir els \textit{scripts} d'automatització que governen l'estrès de la infraestructura, l'enginyeria del caos i la invocació repetitiva de les proves de xarxa.
+\end{itemize}
+
+\section{Disseny i Entrenament del Model d'IA (PyTorch)}
+Per garantir que la prova d'estrès generés una càrrega de processament d'imatges realista abans de l'avaluació de la infraestructura, es va dissenyar i entrenar un model d'Intel·ligència Artificial personalitzat amb el \textit{dataset} MNIST (80\% per a entrenament, 20\% per a validació), descartant l'ús d'un Perceptró Multicapa (MLP) bàsic en favor d'una Xarxa Neuronal Convolucional (CNN).
+
+\begin{itemize}
+    \item \textbf{Justificació de l'Arquitectura:} La decisió d'optar per una CNN respon a la seva superioritat en tasques de visió per computador, ja que permet aprofitar la correlació espacial dels píxels de les imatges.
+    
+    \item \textbf{Bloc d'Extracció de Característiques:} Està compost per dues capes convolucionals (\texttt{Conv2d}) que extreuen 32 i 64 mapes de característiques, respectivament. Cada convolució va seguida d'una funció d'activació no lineal (\texttt{ReLU}) i d'una capa d'agrupació (\texttt{MaxPool2d}) per reduir la dimensionalitat i el cost computacional.
+    
+    \begin{lstlisting}[language=python, caption={Crear un model de Xarxa Neuronal Convolucional (CNN) amb PyTorch.}]
+class CNN(nn.Module):
+    def __init__(self):
+        super(CNN, self).__init__()
+        self.conv1 = nn.Conv2d(1, 32, kernel_size=3, stride=1, padding=1)
+        self.relu = nn.ReLU()
+        self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
+        
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1)
+        self.fc1 = nn.Linear(64 * 7 * 7, 128)
+        self.fc2 = nn.Linear(128, 10)
+
+    def forward(self, x):
+        x = self.pool(self.relu(self.conv1(x)))
+        x = self.pool(self.relu(self.conv2(x)))
+        x = x.reshape(-1, 64 * 7 * 7)
+        x = self.relu(self.fc1(x))
+        x = self.fc2(x)
+        return x
+
+# Initialize the CNN model
+model = CNN()
+print(model)
+    \end{lstlisting}
+
+    \item \textbf{Bloc de Classificació:} Un cop aplanats els mapes de característiques mitjançant l'operació \texttt{reshape}, la informació es transmet a través de dues capes denses (\textit{Fully Connected} o \texttt{Linear}). Aquestes capes redueixen progressivament les dimensions fins a produir una sortida final de 10 nodes, que representen les probabilitats d'encert per als 10 dígits possibles (del 0 al 9).
+    
+    \item \textbf{Paràmetres d'Entrenament (MLOps):} L'optimització dels pesos de la xarxa neuronal s'ha dut a terme aplicant l'algoritme de Descens de Gradient Estocàstic (SGD), configurat amb una taxa d'aprenentatge de 0.01 i un impuls (\textit{momentum}) de 0.9. La funció de cost seleccionada ha estat l'Entropia Creuada (\texttt{CrossEntropyLoss}), i s'ha establert un únic cicle d'entrenament (1 època) processant les imatges en blocs (\textit{batch size}) de 64 unitats.
+\end{itemize}
+
+\textbf{Justificació de l'Entrenament d'1 Època:}
+
+Per a l'avaluació del sistema, l'entrenament de la CNN es va configurar deliberadament per executar-se durant una única època (1 Epoch). Aquesta decisió arquitectònica es fonamenta en tres criteris clau:
+
+\begin{enumerate}
+    \item \textbf{Abast del Projecte:} L'objectiu principal d'aquest estudi és la comparativa de systemd amb kubernetes a l'entoen \textit{Edge}, no l'optimització d'hiperparàmetres en models de \textit{Deep Learning}.
+    \item \textbf{Evidència de Convergència:} Com s'observa a la corba d'aprenentatge, l'error d'entrenament (\textit{Train Loss}) experimenta una caiguda dràstica i s'estabilitza abans de finalitzar la primera iteració completa del \textit{dataset}.
+    \item \textbf{Eficiència Computacional:} En finalitzar aquesta única època, el model assoleix una precisió de validació (\textit{Validation Accuracy}) propera al 98\%. Aquest nivell d'encert és prova empírica suficient per certificar que el \textit{pipeline} d'inferència i la transmissió de tensors funcionen correctament d'extrem a extrem, evitant un consum innecessari de temps i recursos al node Orquestrador.
+\end{enumerate}
+
+
+\section{Infraestructura com a Codi: Arquitectura Nativa (Systemd)}
+Aquesta secció detalla la Infraestructura com a Codi (IaC) basada en Ansible per a l'aprovisionament automatitzat i la gestió del cicle de vida dels nodes (Mestre i \textit{Workers}) en l'entorn de processament perimetral natiu.
+
+\textbf{Arquitectura i Implementació Tècnica}
+
+El sistema està dissenyat sota el paradigma de contenidors \textit{rootless} per maximitzar la seguretat perimetral, delegant el control dels serveis directament a Systemd:
+
+\begin{itemize}
+    \item \textbf{Systemd Linger:} S'habilita la persistència de processos en segon pla per a l'usuari del sistema (\texttt{littledragon}) executant \texttt{loginctl enable-linger}. Això garanteix que els serveis es mantinguin actius un cop tancada la sessió SSH.
+    \item \textbf{Podman Quadlets:} S'elimina l'ús tradicional de \texttt{docker-compose}. L'estat desitjat es declara mitjançant Quadlets, injectant plantilles Jinja2 directament a \texttt{\textasciitilde{}/.config/containers/systemd/} per generar xarxes (\texttt{red.network}) i contenidors (\texttt{worker.container}) de forma nativa.
+    \item \textbf{Aïllament i Alta Disponibilitat:} El sistema crea una xarxa virtual dedicada (\texttt{red-interna}). A més, la unitat de Systemd aplica polítiques d'auto-recuperació (\texttt{Restart=always} amb 3 segons d'espera) per garantir la resiliència del \textit{Worker} davant de fallades.
+\end{itemize}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=1\textwidth]{sources/systemd-arquitectura.png}
+    \caption{Arquitectura de l'entorn nativa amb Systemd.}
+    \label{fig:arquitectura_systemd}
+\end{figure}
+
+\textbf{Disseny Modular i Desplegament Dinàmic (\textit{Air-Gapped})}
+
+El \textit{pipeline} de desplegament és completament independent del protocol de comunicació. La injecció de l'entorn es controla dinàmicament en temps d'execució sobrescrivint la ruta de l'experiment amb variables addicionals (\texttt{-e "experimento\_path=..."}), permetent pivotar l'arquitectura sense alterar el codi font. S'utilitza un patró \textit{Air-Gapped}:
+
+\begin{itemize}
+    \item Ansible itera sobre el protocol seleccionat i compila la imatge OCI centralitzadament al node de control.
+    \item La imatge s'empaqueta en un artefacte immutable (\texttt{.tar}) i es transfereix via SSH.
+    \item Es carrega directament al motor local (\texttt{podman load}), alliberant l'\textit{Edge} de la descàrrega de dependències.
+\end{itemize}
+
+\textbf{Seguretat i Aprovisionament Desatès (\textit{Zero-Touch Provisioning})}
+
+Per assolir una automatització absoluta sense intervenció humana i protegir el repositori de codi, l'escalada de privilegis (\texttt{sudo}) s'injecta des del fitxer local \texttt{group\_vars/workers.yml} (exclòs via \texttt{.gitignore}), eliminant la necessitat d'introduir contrasenyes interactives (\texttt{-K}) durant el desplegament.
+
+\textbf{Documentació d'Execució i Benchmarking}
+
+El procés està governat pels següents components d'automatització:
+
+\begin{itemize}
+    \item \texttt{\textbf{playbook.yml}}: Activa el \textit{Linger}, desplega la xarxa, distribueix l'artefacte \texttt{.tar}, instància el Quadlet i habilita el \texttt{worker.service}.
+    \item \texttt{\textbf{clean.yml}}: Executa una purga agressiva aturant els serveis i forçant l'esborrat de xarxes internes per evitar interferències entre proves.
+    \item \texttt{\textbf{generate\_benchmarks.sh}}: Orquestra el cicle d'avaluació executant el desplegament, capturant el consum base de RAM/CPU, aplicant Enginyeria del Caos (\texttt{podman kill}) per mesurar el MTTR i, finalment, llançant la simulació d'inferència per consolidar les mètriques en un \textit{Data Lake} CSV.
+\end{itemize}
+
+
+\section{Infraestructura com a Codi: Arquitectura Distribuïda (K3s)}
+Aquesta secció detalla l'adaptació de l'entorn cap a un model declaratiu i centralitzat utilitzant K3s, una distribució lleugera de Kubernetes optimitzada per a l'\textit{Edge} (IoT/ARM) \cite{k3s_docs}.
+
+\textbf{Arquitectura i Implementació Tècnica}
+
+
+\begin{itemize}
+    \item \textbf{Motor de Contenidors (\texttt{containerd}):} Se substitueix Podman pel motor intern de Kubernetes. La gestió d'imatges queda sota el control absolut del component \texttt{Kubelet} de cada node.
+    \item \textbf{Manifestos Declaratius (YAML):} S'elimina l'ús de Quadlets. L'estat es defineix al directori \texttt{k8s-manifests/}, aplicant la configuració al clúster via \texttt{kubectl apply}.
+    \item \textbf{Xarxa Definida per Programari (SDN):} L'aïllament i la connectivitat depenen de la xarxa virtual del clúster (CNI Flannel), permetent la comunicació transparent entre nodes.
+    \item \textbf{Resiliència i Auto-Recuperació:} El bucle de reconciliació (\textit{Reconciliation Loop}) de Kubernetes garanteix que l'estat real coincideixi amb el declarat, aixecant nous \textit{Pods} automàticament davant de caigudes.
+\end{itemize}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=1\textwidth]{sources/kubernetes-arquitectura.png}
+    \caption{Arquitectura de l'entorn nativa amb Kubernetes.}
+    \label{fig:arquitectura_kubernetes}
+\end{figure}
+
+\textbf{Disseny Modular i Desplegament Dinàmic (\textit{Air-Gapped})}
+
+L'arquitectura manté l'enfocament modular i dinàmic (\texttt{-e "experimento\_path=..."}) sota el patró \textit{Air-Gapped} adaptat a K3s:
+
+\begin{itemize}
+    \item Compilació de la imatge OCI al node mestre.
+    \item Empaquetament en un artefacte \texttt{.tar} i transferència via SSH.
+    \item Injecció directa al \textit{namespace} intern de K3s utilitzant \texttt{k3s ctr images import}, evitant dependre de registres externs.
+\end{itemize}
+
+\textbf{Seguretat i Inventari}
+
+Igual que a l'entorn natiu, la topologia es defineix a l'\texttt{inventory.ini} separant el grup \texttt{[master]} (execució local per optimitzar la compilació) del grup \texttt{[workers]}. La seguretat es gestiona mitjançant credencials aïllades a \texttt{group\_vars/workers.yml} per facilitar un \textit{Zero-Touch Provisioning}. Els serveis s'exposen a través d'un \textit{Service} tipus \textit{NodePort} pel port 8000.
+
+\textbf{Documentació d'Execució i Benchmarking}
+
+\begin{itemize}
+    \item \texttt{\textbf{playbook.yml}}: S'encarrega de la transferència \textit{Air-Gapped}, injecta els manifestos YAML al clúster i delega al \texttt{Kubelet} la inicialització fins a assolir l'estat \textit{Ready}.
+    \item \texttt{\textbf{clean.yml}}: Executa una purga lògica eliminant els recursos descrits als manifestos i neteja la memòria cau d'imatges amb \texttt{k3s crictl rmi} per evitar la contaminació de mètriques (processos \textit{zombie}).
+    \item \texttt{\textbf{generate\_benchmarks.sh}}: Mapeja dinàmicament el nom lògic del node en K3s a la seva IP física per capturar el consum global pur. Força l'eliminació abrupta d'un \textit{Pod} (\texttt{kubectl delete pod --force}) per mesurar el MTTR monitoritzant el bucle de reconciliació, i executa la prova d'estrès bolcant les dades mitjançant Regex al CSV consolidat.
+\end{itemize}
+
+\section{Disseny del Protocol de Comunicació i Inferència d'IA}
+Un cop desplegada la infraestructura, la transmissió de les dades s'efectua mitjançant una arquitectura de missatgeria síncrona \textit{Request-Reply} (REQ-REP) basada en TCP pur amb ZeroMQ. Després d'avaluar diverses alternatives de serialització binària, es va descartar Protobuf en favor de MessagePack per optimitzar l'agilitat operativa en l'ecosistema d'aprenentatge automàtic.
+
+Aquesta implementació elimina la necessitat de precompilar contractes estrictes (\texttt{.proto}), adoptant un format \textit{schema-less} (sense esquema) que s’integra nativament amb els diccionaris de Python i distribueix la càrrega entre el Pla de Control i el Pla de Dades, tal com s'il·lustra a les figures globals de l'arquitectura:
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{sources/full_pipeline_systemd.png}
+    \caption{Topologia completa de la inferència d'IA sobre Systemd.}
+    \label{fig:full_pipeline_systemd}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{sources/full_pipeline_k3s.png}
+    \caption{Topologia completa de la inferència d'IA sobre K3s.}
+    \label{fig:full_pipeline_k3s}
+\end{figure}
+
+El flux d'execució i l'enrutament s'estructuren de la següent manera:
+
+\begin{itemize}
+    \item \textbf{Orquestració i Estructuració Dinàmica (Node Mestre):} El mestre assumeix el control total de l'entrenament (\textit{Offline}) i la injecció de dades. En lloc d'instanciar classes precompilades, empaqueta els bytes del model (\texttt{.pth}) i els tensors d'imatges directament en un diccionari estàndard (\texttt{\{'model\_data': model\_bytes\}}). Aquesta estructura es comprimeix dinàmicament a format binari utilitzant \texttt{msgpack.packb(..., use\_bin\_type=True)} i s'injecta a la xarxa mitjançant missatgeria multiparte.
+    
+    \item \textbf{Gestió de Memòria i Seguretat (Nodes \textit{Workers}):} Atès que les llibreries de MessagePack imposen límits estrictes de memòria per prevenir atacs per esgotament (OOM), el servidor perimetral sobrescriu explícitament aquests límits (\texttt{max\_bin\_len=200*1024*1024}) per permetre la deserialització de tensors pesats propis de PyTorch.
+    
+    \item \textbf{Inferència i Còpia Zero (\textit{Zero-Copy}):} En rebre la petició d'inferència, el \textit{Worker} recupera el tensor mitjançant la clau del diccionari i aplica tècniques de còpia zero (\texttt{np.frombuffer}). Això permet assignar el bloc de memòria directament a la Xarxa Neuronal Convolucional (CNN), invertint tot l'esforç de la CPU en el càlcul matemàtic (\texttt{torch.no\_grad()}) sense duplicar les dades a la RAM.
+    
+    \item \textbf{Enrutament segons l'Arquitectura:} En l'entorn natiu (Systemd), el diccionari MessagePack s'envia directament al port local del contenidor. En l'entorn distribuït (K3s), el mestre injecta els paquets a través d'un servei \textit{NodePort} exposat al port 30000, delegant a l'orquestrador l'enrutament intern cap al \textit{socket} del \textit{Pod} corresponent.
+\end{itemize}
+
+
+\section{Automatització del \textit{Pipeline} i \textit{Data Lake}}
+L'avaluació es fonamenta en una jerarquia de tres \textit{scripts} de Bash que actuen com a fil d'execució continu per evitar qualsevol biaix manual. En el nivell superior, un \textbf{orquestrador mestre híbrida} governa el cicle de vida global de l'experiment. La seva funció principal és gestionar la transició entre plataformes i garantir la integritat del maquinari, forçant reinicis físics (\texttt{sudo reboot}) als nodes perimetrals i aplicant pauses de refredament de 120 segons per evitar la degradació del rendiment per sobreescalfament (\textit{Thermal Throttling}).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{sources/flow-pipeline.png}
+    \caption{Flux del pipeline d'execució automatitzada.}
+    \label{fig:flow-pipeline}
+\end{figure}
+
+Un cop l'entorn físic està estabilitzat, aquest orquestrador mestre invoca els \textit{scripts} específics d'avaluació (un dissenyat exclusivament per a Systemd i un altre per a K3s). Aquests sub-orquestradors iteren seqüencialment sobre els protocols executant les següents fases:
+
+\begin{itemize}
+    \item \textbf{Inicialització i Estabilització:} S'executa una neteja total de l'entorn previ i es desplega la infraestructura des de zero. S'apliquen pauses d'estabilització (de 15 segons en K3s) per permetre que els processos en segon pla com el \textit{metrics-server} s'assentin i recullin dades fiables del consum base.
+    \item \textbf{Enginyeria del Caos:} Destrucció abrupta del procés actiu i mesura mil·limètrica del Temps Mitjà de Recuperació (MTTR) mitjançant consultes iteratives a l'estat del sistema.
+    \item \textbf{Bucle d'Estrès i Extracció (\textit{Data Lake}):} Execució de 5 llançaments consecutius del client Python per saturar la xarxa. Un cop finalitzats, un \textit{script} de Python incrustat dins de Bash analitza els registres en text pla mitjançant expressions regulars (Regex) i bolca dinàmicament totes les mètriques estructurades (latència, \textit{Throughput}, memòria màxima, etc.) al fitxer consolidat \texttt{resultados\_globales.csv}.
+\end{itemize}
+
+\begin{lstlisting}[language=Python, caption={Extracció de mètriques Regex cap al Data Lake CSV incrustada en Bash}]
+# Extracción de Infraestructura
+t_deploy = get_avg(log_file, r"T_deploy total:\s*([0-9\.]+)")
+cpu_reposo = get_avg(log_file, r"CPU Reposo \(Global\):\s*([0-9\.]+)%")
+# Podman suele devolver '15.2MB' o '15.2MiB', el regex coge el 15.2 perfecto
+ram_reposo = get_avg(log_file, r"RAM Reposo \(Global\):\s*([0-9\.]+)")
+mttr = get_avg(log_file, r"Tiempo Real Arranque:\s*([0-9\.]+)")
+
+# Extracción de Red (Añadida la Tasa de Éxito)
+t_total = get_avg(log_file, r"Tiempo Total \(s\):\s*([0-9\.]+)")
+throughput = get_avg(log_file, r"Throughput \(img/s\):\s*([0-9\.]+)")
+# Regex tolerante: Atrapa "Tasa Éxito" o "Tasa de Éxito"
+tasa_exito = get_avg(log_file, r"Tasa(?: de)? Éxito \(%\):\s*([0-9\.]+)") 
+rtt = get_avg(log_file, r"Latencia RTT Promedio \(ms\):\s*([0-9\.]+)")
+t_proc = get_avg(log_file, r"Tiempo T_proc Promedio \(ms\):\s*([0-9\.]+)")
+ram_max = get_avg(log_file, r"Pico Máx\. RAM Worker \(MB\):\s*([0-9\.]+)")
+cpu_max = get_avg(log_file, r"CPU Promedio \(%\):\s*([0-9\.]+)")
+payload_nodo = get_avg(log_file, r"Payload Promedio por Nodo \(MB\):\s*([0-9\.]+)")
+
+# Escribir en CSV
+file_exists = os.path.isfile(csv_file)
+with open(csv_file, 'a', encoding='utf-8') as f:
+    if not file_exists:
+        f.write("Fecha,Protocolo,T_deploy,CPU_Reposo,RAM_Reposo,MTTR,T_Total,Throughput,Exito_%,RTT,T_Proc,RAM_Max,CPU_Max,Payload_MB\n")
+        
+    f.write(f"{fecha},{protocol_name},{t_deploy:.2f},{cpu_reposo:.2f},{ram_reposo:.2f},{mttr:.2f},{t_total:.2f},{throughput:.2f},{tasa_exito:.2f},{rtt:.2f},{t_proc:.2f},{ram_max:.2f},{cpu_max:.2f},{payload_nodo:.2f}\n")
+\end{lstlisting}
+
+\section{Decisions Tècniques i Resolució de Problemes}
+La mesura precisa del MTTR va requerir solucions adaptades a cada tecnologia. Per a l'enfocament natiu, la fallada se simula amb un \texttt{podman kill} i la detecció de recuperació s'aconsegueix amb bucles \texttt{while} de 0.05 segons interrogant l'estat local del \texttt{systemctl}. Per contra, en l'entorn distribuït s'ha de fulminar el procés forçant el tancament (\texttt{kubectl delete pod --force --grace-period=0}) i esperar que el \textit{DaemonSet} assigni i validi el nou \textit{Pod} monitoritzant el seu canvi a l'estat \textit{Ready}.  
+
+Durant la fase d'enginyeria del caos en l'entorn distribuït, es va identificar una incidència crítica d'infraestructura: un bloqueig (\textit{lock}) en l'alliberament de la IP virtual per part del connector Flannel, fet que va disparar el temps de recuperació d'una iteració a 261.450 ms (aproximadament 4 minuts). Per salvaguardar el rigor estadístic general, aquest valor atípic extrem es va descartar aplicant una tècnica d'imputació de la mitjana (\textit{Data Cleansing}), evitant que un error transitori de la subxarxa SDN virtual distorsionés l'avaluació global de l'orquestrador.
