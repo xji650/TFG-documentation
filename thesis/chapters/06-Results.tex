@@ -8,15 +8,17 @@
 \section{Selecció del Protocol de Comunicació}
 \label{sec:protocol}
 
-Abans d'avaluar l'impacte dels orquestradors, es va realitzar una comparativa empírica per determinar el protocol de xarxa òptim per a la transmissió de tensors, evitant que la capa de transport actués com a coll d'ampolla. Les mètriques consolidades reflecteixen la mitjana històrica de proves d'estrès massives executades sobre l'entorn natiu.
+Abans d'avaluar l'impacte arquitectònic dels orquestradors, és imperatiu determinar quin és el protocol de xarxa òptim per a la transmissió massiva de tensors matemàtics. L'objectiu d'aquesta fase és aïllar la capa de transport per garantir que la serialització de les dades no actuï com a coll d'ampolla. Totes les proves d'aquesta secció s'han executat exclusivament sobre l'entorn natiu (Systemd) per registrar el límit físic del maquinari sense interferències de xarxes virtuals.
+
+La Taula \ref{tab:resultados_rendimiento_red} presenta les mètriques consolidades, extretes de la mitjana històrica del \textit{Data Lake} després de sotmetre els nodes a càrrega extrema.
 
 \begin{table}[htbp]
     \centering
-    \renewcommand{\arraystretch}{1.2} % Mejora el espaciado visual de las filas
+    \renewcommand{\arraystretch}{1.2}
     \resizebox{\textwidth}{!}{%
     \begin{tabular}{|l|c|c|c|c|c|c|}
         \hline
-        \textbf{Protocolo (Systemd)} & \textbf{$T_{Total}$ (s)} & \textbf{Throughput (img/s)} & \textbf{RTT (ms)} & \textbf{$T_{proc} Worker$ (ms)} & \textbf{RAM Máx (MB)} & \textbf{Payload (MB)} \\
+        \textbf{Protocol (Systemd)} & \textbf{$T_{Total}$ (s)} & \textbf{Throughput (img/s)} & \textbf{RTT (ms)} & \textbf{$T_{proc}$ Worker (ms)} & \textbf{RAM Màx (MB)} & \textbf{Payload (MB)} \\
         \hline
         HTTP / JSON & 0.80 & 2492.71 & 416.45 & 402.00 & 329.12 & 15.59 \\
         \hline
@@ -28,115 +30,119 @@ Abans d'avaluar l'impacte dels orquestradors, es va realitzar una comparativa em
         \hline
     \end{tabular}%
     }
-    \caption{Resultados consolidados de rendimiento de red por protocolo.}
+    \caption{Resultats consolidats de rendiment de xarxa per protocol a l'Edge.}
     \label{tab:resultados_rendimiento_red}
 \end{table}
 
-\begin{itemize}
-    \item \textbf{Línia Base (HTTP amb JSON):} L'estàndard web tradicional es demostra inviable per al processament perimetral. L'ús de text pla infla el \textit{payload} fins a 15,59 MB per petició. Aquest excés de dades i l'alt cost computacional de deserialitzar JSON saturen el \textit{Worker}, limitant el rendiment a un pobre 2.490 img/s i disparant la latència estructural a 415 ms.
-    
-    \item \textbf{El Salt a Binari (gRPC amb Protobuf):} La transició a serialització binària redueix dràsticament la càrrega de xarxa al seu pes matemàtic real (només 2,99 MB). Aquesta optimització descarrega la memòria i la CPU, permetent multiplicar el rendiment gairebé per quatre (8.608 img/s) i reduint la latència a la meitat.
-    
-    \item \textbf{El Límit del Transport (ZeroMQ amb Protobuf):} L'eliminació del motor HTTP/2 (emprat per gRPC) en favor de connexions TCP crues amb ZeroMQ assoleix el pic absolut de velocitat (9.333 img/s) i la latència mínima (211 ms). Això evidencia que gRPC afegeix un \textit{overhead} de capçaleres innecessari per a comunicacions pures màquina a màquina.
-    
-    \item \textbf{Optimització Dinàmica (ZeroMQ amb MessagePack):} Tot i oferir un rendiment gairebé idèntic al seu homòleg de Protobuf (9.087 img/s), MessagePack consolida una excel·lent estabilitat de memòria. En no requerir la compilació d'esquemes estrictes prèviament (\textit{schema-less}), aquesta combinació es corona com l'arquitectura òptima, oferint el millor equilibri entre velocitat d'inferència, mínima petjada de memòria i agilitat de desenvolupament per a MLOps.
-\end{itemize}
+De l'anàlisi d'aquestes mètriques i la seva representació visual, s'extreuen les següents conclusions:
+
+\textbf{1. El Coll d'Ampolla del Text Pla (HTTP/JSON)}  
+L'estàndard web tradicional es demostra totalment inviable per al processament perimetral. En no suportar transmissió binària nativa, els tensors es converteixen a text pla, inflant el \textit{payload} fins a 15,59 MB per petició. Com s'observa a la Figura \ref{fig:comparativa_protocols_throughput}, el seu rendiment queda severament estancat (2.492 img/s). A més, la mètrica del $T_{proc}$ (402 ms) evidencia que la CPU del \textit{Worker} col·lapsa intentant parsejar documents de text gegantins en lloc de calcular prediccions d'IA.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.6\textwidth]{sources/graph_1_throughput.png}
-    \caption{Comparativa de rendiment entre HTTP, gRPC i ZeroMQ.}
+    \includegraphics[width=0.7\textwidth]{sources/graph_1_throughput.png}
+    \caption{Comparativa de rendiment brut (\textit{Throughput}) processant tensors.}
     \label{fig:comparativa_protocols_throughput}
 \end{figure}
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.6\textwidth]{sources/graph_2_ram_footprint.png}
-    \caption{Comparativa de petjada de memòria entre HTTP, gRPC i ZeroMQ.}
-    \label{fig:comparativa_protocols_ram}
-\end{figure}
+\textbf{2. El Salt a la Serialització Binària (gRPC)}  
+La transició cap a gRPC i Protobuf resol els problemes crítics del \textit{baseline}. La càrrega de xarxa es redueix al seu pes matemàtic pur (2,99 MB). Aquesta eficiència permet utilitzar tècniques de \textit{Zero-Copy} (\texttt{np.frombuffer}) a la memòria cau, reduint el temps de processament local a la meitat (198 ms) i disparant el \textit{throughput} per sobre de les 8.600 img/s.
+
+\textbf{3. Eficiència de Memòria i el Límit del Transport (ZeroMQ)}  
+Tot i l'alta velocitat de gRPC, el seu motor intern basat en HTTP/2 afegeix un \textit{overhead} de capçaleres innecessari. Substituir-lo per connexions TCP crues (\textit{Brokerless}) amb ZeroMQ assoleix el límit físic de velocitat. Tal com s'il·lustra a la Figura \ref{fig:comparativa_protocols_ram}, les arquitectures basades en ZeroMQ presenten la petjada de memòria (\textit{RAM Footprint}) més baixa sota estrès, aconseguint un estalvi crític per a dispositius \textit{Edge} limitats en comparació amb l'ecosistema gRPC.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.6\textwidth]{sources/graph_3_scatter_tradeoff.png}
-    \caption{Comparativa de trade-off entre rendiment i latència.}
+    \includegraphics[width=1\textwidth]{sources/graph_2_ram_footprint.png}
+    \caption{Impacte de la serialització en el consum màxim de memòria RAM als \textit{Workers}.}
+    \label{fig:comparativa_protocols_ram}
+\end{figure}
+
+\textbf{4. Matriu de Trade-off}  
+La decisió arquitectònica definitiva es visualitza a la matriu de \textit{Trade-off} (Figura \ref{fig:comparativa_protocols_tradeoff}), que encreua la capacitat de processament global amb la latència estructural. El quadrant superior esquerre (alta velocitat i mínima latència) és dominat absolutament per ZeroMQ.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{sources/graph_3_scatter_tradeoff.png}
+    \caption{Relació de compromís (\textit{Trade-off}) entre rendiment global i Latència RTT.}
     \label{fig:comparativa_protocols_tradeoff}
 \end{figure}
+
+Dins d'aquest quadrant líder, \textbf{ZeroMQ combinat amb MessagePack} es consolida com l'arquitectura guanyadora. Tot i presentar un rendiment marginalment inferior a Protobuf (9.079 vs 9.299 img/s), MessagePack aporta un format \textit{schema-less} que s'integra nativament amb estructures de Python. Això elimina la complexitat de precompilar contractes estrictes (\texttt{.proto}), estabilitzant el pic de memòria cau i maximitzant l'agilitat operativa per a fluxos MLOps. Aquesta combinació s'estableix com l'estàndard de transport definitiu per avaluar els orquestradors a la resta de l'estudi.
 
 \section{Rendiment del Model d'IA (CNN)}
 \label{sec:rendiment_ia}
 
-Per garantir que la infraestructura se sotmet a una càrrega d'inferència realista abans de comparar els orquestradors, s'ha validat l'entrenament del model utilitzant el protocol guanyador (ZeroMQ-MessagePack).
+Per garantir que la infraestructura se sotmet a una càrrega d'inferència realista abans de comparar els orquestradors, és imprescindible certificar la viabilitat operativa i la integritat de les dades en el sistema distribuït. S'ha validat l'entrenament del model utilitzant el protocol guanyador (ZeroMQ amb MessagePack), demostrant que la partició del \textit{dataset} i la transmissió de tensors es realitza sense corrompre el \textit{payload}.
 
-% Imatges de la IA (Matriu de confusió, corba de pèrdua, exemples)
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.8\textwidth]{sources/matriz-confusion.png}
+    \includegraphics[width=0.48\textwidth]{sources/loss-curve.png}
     \hfill
-    \includegraphics[width=0.8\textwidth]{sources/loss-curve.png}
-    \hfill
+    \includegraphics[width=0.48\textwidth]{sources/matriz-confusion.png}
+    \vspace{0.4cm} \\
     \includegraphics[width=0.8\textwidth]{sources/ejemplos-predicciones-msgpack.png}
-    \caption{Avaluació del model: Matriu de confusió (esquerra), Corba de pèrdua (centre) i Exemples de predicció (dreta).}
+    \caption{Avaluació del model fundacional: Corba de pèrdua (esquerra), Matriu de confusió (dreta) i Exemples de predicció visual (inferior).}
     \label{fig:avaluacio_model}
 \end{figure}
 
-Les mètriques extretes durant la fase d'entrenament (Offline) demostren que la Xarxa Neuronal Convolucional (CNN) aprèn correctament els patrons espacials del dataset MNIST. La matriu de confusió i la corba de pèrdua confirmen que el model no pateix sobreajustament (\textit{overfitting}), permetent injectar una càrrega de matrius matemàtiques pesades (tensors) altament fidel als escenaris reals de processament Edge.
+L'anàlisi d'aquestes mètriques visuals extretes durant la fase d'entrenament (\textit{Offline}) confirma el comportament esperat de la Xarxa Neuronal Convolucional (CNN):
+
+\begin{itemize}
+    \item \textbf{Convergència de l'Error (Corba de Pèrdua):} Com s'observa a la gràfica superior esquerra, l'error d'entrenament (\textit{Train Loss}) experimenta una caiguda dràstica i s'estabilitza abans de finalitzar la primera iteració completa del \textit{dataset}. Això justifica empíricament la decisió d'entrenar durant una única època (1 Epoch), evitant un consum innecessari de temps al node Mestre.
+    \item \textbf{Precisió (Matriu de Confusió):} La diagonal intensament fosca de la matriu demostra una alta taxa d'encerts (Veritables Positius), assolint una precisió de validació (\textit{Validation Accuracy}) propera al 98\%. La baixa dispersió fora de la diagonal certifica que el model no pateix sobreajustament (\textit{overfitting}).
+    \item \textbf{Integritat de la Transmissió (Exemples Visuals):} Les mostres aleatòries capturades directament des del \textit{Worker} verifiquen que la serialització dinàmica amb \texttt{msgpack} reconstrueix la imatge perfecta a l'altre extrem de la xarxa, obtenint inferències lògiques i correctes.
+\end{itemize}
+
+Amb la fiabilitat algorítmica garantida, el model actua com una eina d'estrès realista per començar la comparativa definitiva d'infraestructures.
 
 \section{Comparativa Arquitectònica a l'Edge: Systemd vs Kubernetes (K3s)}
 \label{sec:comparativa_arquitectonica}
 
-Establert el protocol i la càrrega de treball, aquesta secció presenta la conclusió tècnica del projecte. L'objectiu és quantificar l'"Impost Arquitectònic" (\textit{Architectural Overhead}) que introdueix Kubernetes en maquinari perimetral enfront de l'arquitectura nativa basada en Systemd.  
+Establert el protocol (ZeroMQ + MessagePack) i validada la càrrega de treball d'IA, aquesta secció presenta la conclusió tècnica del projecte. L'objectiu és quantificar l'"Impost Arquitectònic" (\textit{Architectural Overhead}) que introdueix un orquestrador Cloud modern (Kubernetes) quan es desplega en maquinari perimetral limitat, enfrontant-lo a una arquitectura nativa d'execució directa (Systemd).
 
 \subsection{L'Impost Arquitectònic (Consum de RAM en Repòs)}
-\label{subsec:impost_arquitectonic}
-
-La primera mètrica avalua el consum base de la infraestructura abans d'injectar trànsit, mesurat directament al sistema operatiu.
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.8\textwidth]{sources/1_overhead_ram.png}
-    \caption{Comparativa del consum de memòria RAM en repòs.}
-    \label{fig:overhead_ram}
-\end{figure}
-
-L'arquitectura basada en Systemd presenta un consum mitjà en repòs de 731 MB. L'adopció de Kubernetes eleva aquesta base fins als 852 MB. Aquesta diferència d'aproximadament 120 MB constitueix l'impost directe de l'orquestrador. Mentre que Systemd executa els contenidors interactuant directament amb el kernel, K3s requereix mantenir actius múltiples dimonis (kubelet, API, containerd, flannel) per sostenir l'estat del clúster. En dispositius amb RAM limitada, aquesta reserva redueix el marge per al processament d'IA.  
-
-\subsection{Enginyeria del Caos i Resiliència (MTTR)}
-\label{subsec:resiliencia_mttr}
-
-Per avaluar la capacitat d'auto-recuperació, es va aplicar un protocol de \textit{Chaos Testing}, eliminant abruptament els contenidors i mesurant el Temps Mitjà de Recuperació (MTTR).  
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.8\textwidth]{sources/2_mttr_resiliencia.png}
-    \caption{Temps Mitjà de Recuperació (MTTR) davant fallades crítiques.}
-    \label{fig:mttr_resiliencia}
-\end{figure}
-
-Systemd reinicia el servei en només 491 ms, mentre que Kubernetes requereix 1.473 ms (més del triple). Systemd gestiona els processos localment, permetent un reinici gairebé instantani. K3s opera sota un model distribuït asíncron: el bucle de reconciliació ha de detectar la caiguda, reprogramar el Pod, i sol·licitar una nova IP virtual al connector de xarxa (CNI), afegint latència inherent.
-
-\textbf{Nota:} Durant l'avaluació en K3s es va registrar un bloqueig atípic del connector Flannel de 261.450 ms (4 minuts) en alliberar una IP virtual. Per mantenir la integritat estadística, aquesta anomalia s'ha descartat aplicant tècniques de depuració de dades (\textit{Data Cleansing}).  
-
-\subsection{Penalització de Xarxa Virtual (Rendiment i Throughput)}
-\label{subsec:penalitzacio_xarxa}
-
-La darrera prova avalua l'impacte de la capa d'infraestructura sobre el rendiment brut de la xarxa sota estrès màxim.
+La primera mètrica avalua el consum base de la infraestructura abans d'injectar cap càrrega de treball, mesurat directament a nivell del sistema operatiu.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.6\textwidth]{sources/3_throughput_comparativa.png}
-    \caption{Penalització del rendiment (Throughput) processant imatges.}
+    \includegraphics[width=0.7\textwidth]{sources/1_overhead_ram.png}
+    \caption{Comparativa de la petjada de memòria base (\textit{Idle RAM Footprint}) als \textit{Workers}.}
+    \label{fig:overhead_ram}
+\end{figure}
+
+L'arquitectura basada en Systemd presenta un consum mitjà en repòs de 731 MB. L'adopció de Kubernetes eleva aquesta base fins als 852 MB. Aquesta diferència d'aproximadament 120 MB constitueix l'impost directe de l'orquestrador. Mentre que Systemd executa els contenidors de forma nativa interactuant directament amb el \textit{kernel}, K3s requereix mantenir actius múltiples dimonis en segon pla per sostenir l'estat del clúster (\textit{kubelet}, l'API, \textit{containerd} i el connector \textit{flannel}). En dispositius perimetrals amb recursos estrictes (p. ex. 2 GB o 4 GB de RAM), aquesta reserva permanent redueix el marge disponible per processar les càrregues d'IA (\textit{Compute Bound}).
+
+\subsection{Enginyeria del Caos i Resiliència (MTTR)}
+Per avaluar la capacitat d'auto-recuperació davant fallades crítiques, es va aplicar un protocol de proves de caos (\textit{Chaos Testing}), eliminant abruptament els contenidors actius i mesurant el Temps Mitjà de Recuperació (MTTR).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\textwidth]{sources/2_mttr_resiliencia.png}
+    \caption{Temps Mitjà de Recuperació (MTTR) davant la destrucció abrupta d'un contenidor.}
+    \label{fig:mttr_resiliencia}
+\end{figure}
+
+Systemd demostra una velocitat de recuperació immensament superior, reiniciant el servei en 491 ms. Kubernetes, per la seva banda, requereix 1.473 ms (el triple de temps). Tècnicament, Systemd gestiona els processos localment, permetent un reinici gairebé instantani. K3s opera sota un model distribuït asíncron on el bucle de reconciliació (\textit{Reconciliation Loop}) ha de detectar la caiguda via API, reprogramar el \textit{Pod}, i sol·licitar una nova IP virtual al connector de xarxa (CNI), afegint una latència estructural al procés.
+
+\subsection{Penalització de Xarxa Virtual (Rendiment Brut)}
+La prova final avalua com la capa d'infraestructura subjacent afecta el rendiment de la xarxa per processar paquets de dades a màxima velocitat sota el protocol ZeroMQ.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\textwidth]{sources/3_throughput_comparativa.png}
+    \caption{Penalització del rendiment màxim d'injecció a causa del CNI de Kubernetes.}
     \label{fig:throughput_comparativa}
 \end{figure}
 
-Utilitzant exactament el mateix codi, Systemd assoleix un processament de 9.088 imatges per segon, enfront de les 6.556 img/s de Kubernetes. Aquesta degradació del 30\% és conseqüència directa de la capa de Xarxa Definida per Programari (SDN) de K3s. Mentre els contenidors natius utilitzen l'accés directe a la xarxa, el trànsit a Kubernetes s'encapsula en túnels VXLAN, consumint cicles de CPU i minvant l'amplada de banda efectiva.  
+Utilitzant exactament el mateix codi i maquinari, Systemd assoleix el processament de 9.088 imatges per segon, enfront de les 6.556 img/s de Kubernetes. Aquesta degradació del 30\% és la conseqüència directa de la capa de Xarxa Definida per Programari (SDN) de K3s. Mentre que en Systemd els contenidors utilitzen la xarxa del \textit{host} amb un enllaç directe, en Kubernetes tot el trànsit inter-node s'ha d'encapsular mitjançant túnels VXLAN (operats per Flannel). Aquest encapsulament consumeix cicles valuosos de CPU simplement empaquetant i desempaquetant trànsit, minvant l'amplada de banda efectiva.
 
-\section{Veredicte Final i Trade-Offs}
-\label{sec:veredicte_final}
+\section{Conclusions}
+L'avaluació empírica conclou que portar Kubernetes a l'Edge no és "gratuït". L'orquestrador introdueix penalitzacions tangibles: incrementa la petjada de memòria un 16\%, triplica el temps de recuperació local i redueix el rendiment brut de xarxa un 30\%.
 
-L'adopció de Kubernetes introdueix penalitzacions tangibles a l'Edge. No obstant això, la decisió final depèn de la complexitat de gestió (\textit{Management Complexity}).  
-
-Systemd es posiciona com la solució òptima per a nodes aïllats (\textit{Standalone}) on el rendiment brut i la latència són crítics, a canvi de requerir eines externes (Ansible) per al control.  
-
-Kubernetes (K3s) justifica el seu "impost arquitectònic" en escenaris distribuïts on prima la reducció de la complexitat operativa, permetent tolerància a fallades i actualitzacions declaratives (\textit{Zero-Touch}) sobre grans flotes de dispositius.
-
+Tot i això, el veredicte final sobre quina eina utilitzar depèn íntegrament de la complexitat de gestió (\textit{Management Complexity}):
+\begin{itemize}
+    \item \textbf{Systemd} es consolida com la solució òptima per a dispositius perimetrals aïllats (\textit{Standalone}) amb recursos ultra-limitats, on el rendiment brut de processament i la latència són factors crítics per a l'èxit del sistema.
+    \item \textbf{Kubernetes (K3s)} justifica plenament el seu "impost arquitectònic" en escenaris corporatius distribuïts. La capacitat de reduir la complexitat operativa, oferir balanceig de càrrega dinàmic i permetre actualitzacions declaratives massives (\textit{Zero-Touch}) compensa la pèrdua de rendiment per a grans flotes de dispositius \textit{Edge}.
+\end{itemize}

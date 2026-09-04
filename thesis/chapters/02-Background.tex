@@ -7,7 +7,7 @@ Aquest apartat estableix la base teòrica necessària per comprendre l'evolució
 Els contenidors són una tecnologia de virtualització a nivell de sistema operatiu que permet empaquetar una aplicació i totes les seves dependències en una unitat estandarditzada. A diferència de les màquines virtuals, els contenidors comparteixen el nucli (\textit{kernel}) del sistema amfitrió, la qual cosa els fa molt més lleugers, ràpids d'iniciar i eficients en l'ús de CPU i memòria.
 
 \textbf{Arquitectures amb dimoni i sense dimoni (\textit{Daemonless}):}
-Tradicionalment, motors com Docker funcionen basant-se en un dimoni (\textit{daemon}), un procés central en segon pla (generalment executat amb privilegis d'administrador) que gestiona tot el cicle de vida dels contenidors. Si aquest dimoni cau, tot el sistema s'atura. Com a evolució, sorgeix Podman, un motor de contenidors sense dimoni. Podman executa els contenidors interactuant directament amb el nucli del sistema mitjançant processos independents, fet que millora la seguretat, redueix el consum en repòs i permet una integració molt més natural amb el sistema operatiu de la màquina.
+Tradicionalment, motors com Docker funcionen basant-se en un dimoni (\textit{daemon}), un procés central en segon pla (generalment executat amb privilegis d'administrador) que gestiona tot el cicle de vida dels contenidors. Si aquest dimoni cau, tot el sistema s'atura. Com a evolució, sorgeix Podman, un motor de contenidors sense dimoni. Podman executa els contenidors interactuant directament amb el nucli del sistema mitjançant processos independents \cite{podman_pod}, fet que millora la seguretat, redueix el consum en repòs i permet una integració molt més natural amb el sistema operatiu de la màquina.
 
 \section{L'Evolució de l'Orquestració i la Falsa Dicotomia a l'\textit{Edge}}
 L'orquestració automatitza el desplegament, l'escalabilitat i la resiliència de múltiples contenidors. Històricament, l'evolució d'aquests sistemes i el seu mapa mental a la indústria ha travessat diferents fases:  
@@ -30,7 +30,7 @@ L'orquestració automatitza el desplegament, l'escalabilitat i la resiliència d
 \section{L'Enfocament Natiu: El paradigma de Systemd, Quadlets i Ansible}
 Per trencar aquesta dicotomia, neix una iniciativa tècnica impulsada per Red Hat que planteja un canvi de paradigma fonamental: en lloc d'introduir un agent orquestrador extern (\texttt{kubelet}) que consumeixi recursos contínuament en un maquinari limitat, per què no delegar aquesta tasca al gestor de processos més madur i eficient que ja inclou Linux per defecte?  
 
-Aquí és on entra Systemd, el sistema d'inicialització estàndard de Linux. S'encarrega d'arrencar programes i reiniciar-los gairebé a l'instant si fallen. Històricament, integrar contenidors amb Systemd requeria l'enfocament \textit{Legacy} (escriure complexos fitxers \texttt{.service}). Actualment, la solució recau en els \textit{Quadlets}, una eina nativa de Podman que permet definir contenidors de manera declarativa. El sistema s'encarrega de traduir-ho automàticament a serveis, delegant el cicle de vida directament al \textit{kernel}.
+Aquí és on entra Systemd, el sistema d'inicialització estàndard de Linux. S'encarrega d'arrencar programes i reiniciar-los gairebé a l'instant si fallen. Històricament, integrar contenidors amb Systemd requeria l'enfocament \textit{Legacy} (escriure complexos fitxers \texttt{.service}). Actualment, la solució recau en els \textit{Quadlets} \cite{podman_systemd_unit}, una eina nativa de Podman que permet definir contenidors de manera declarativa. El sistema s'encarrega de traduir-ho automàticament a serveis, delegant el cicle de vida directament al \textit{kernel}.
 
 \textbf{Ansible i la simulació de Kubernetes:}
 Atès que Systemd i Podman només actuen a nivell de màquina individual, l'arquitectura es completa amb Ansible, una eina d'automatització descentralitzada sense agents instal·lats. En combinar aquestes tecnologies, es pot replicar l'estabilitat d'un orquestrador sencer sense pagar-ne l'``impost arquitectònic'':
@@ -58,7 +58,7 @@ La informació es pot estructurar en dos grans formats. D'una banda, el text pla
 \section{Càrregues de treball exigents: La necessitat d'optimitzar per a la IA}
 L'aplicació pràctica d'aquestes optimitzacions es materialitza en el processament d'Intel·ligència Artificial al límit de la xarxa. Els models d'aprenentatge profund (\textit{Deep Learning}) requereixen allotjar estructures de dades complexes (tensors) a la memòria RAM per a la seva execució. Qualsevol sobrecost d'infraestructura (com l'``Impost Arquitectònic'' d'un orquestrador) sostreu recursos de computació directament al model d'IA, reduint-ne el rendiment.
 
-Per quantificar aquest impacte de manera empírica, l'estudi requereix una càrrega de treball reconeguda i estandarditzada. Per això, el trànsit de xarxa se simula utilitzant el conjunt de dades MNIST, un estàndard clàssic de reconeixement de dígits manuscrits que permet enviar un flux constant d'imatges als contenidors avaluats.
+Per quantificar aquest impacte de manera empírica, l'estudi requereix una càrrega de treball reconeguda i estandarditzada. Per això, el trànsit de xarxa se simula utilitzant el conjunt de dades MNIST, un estàndard clàssic de reconeixement de dígits manuscrits que permet enviar un flux constant d'imatges als contenidors avaluats \cite{tensorflow_mnist}.
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.75\textwidth]{sources/dataset-card.png}
@@ -66,7 +66,7 @@ Per quantificar aquest impacte de manera empírica, l'estudi requereix una càrr
     \label{fig:mnist_dataset}
 \end{figure}
 
-A nivell de programari d'IA, tot i que TensorFlow i PyTorch són els grans referents del mercat, s'ha optat per PyTorch. La seva arquitectura basada en grafs computacionals dinàmics ofereix una execució més àgil i un ús de memòria més controlable, unes característiques que s'alineen perfectament amb les restriccions de maquinari pròpies dels nodes \textit{Edge}.
+A nivell de programari d'IA, tot i que TensorFlow i PyTorch són els grans referents del mercat, s'ha optat per PyTorch \cite{pytorch_mnist_guide}. La seva arquitectura basada en grafs computacionals dinàmics ofereix una execució més àgil i un ús de memòria més controlable, unes característiques que s'alineen perfectament amb les restriccions de maquinari pròpies dels nodes \textit{Edge}.
 
 Finalment, l'arquitectura de la xarxa neuronal determina la intensitat del processament. Tot i que una opció inicial era utilitzar un simple Perceptró Multicapa (MLP), s'ha implementat una Xarxa Neuronal Convolucional (CNN). Aquesta decisió respon a la necessitat de generar un escenari realista de visió per computador: les complexes operacions matricials d'una CNN estressen de manera efectiva la CPU i la RAM del dispositiu. Això assegura que la prova no només mesuri l'enviament de dades, sinó que reprodueixi una càrrega de càlcul intensiva que reveli amb precisió com la penalització de l'orquestrador afecta la capacitat d'inferència de la màquina.
 \begin{figure}[htbp]
