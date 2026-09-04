@@ -24,8 +24,7 @@ Abans de comparar les arquitectures, l'estudi es va plantejar de manera iterativ
 \end{itemize}
 
 \section{Selecció del Model d'IA}
-Per garantir que la prova d'estrès generés una càrrega de processament d'imatges realista, es va descartar l'ús d'un Perceptró Multicapa (MLP) bàsic. L'estudi opta per una Xarxa Neuronal Convolucional (CNN), justificada per la seva superioritat en tasques de visió per computador en aprofitar la correlació espacial dels píxels. El disseny inclou blocs d'extracció de característiques i tècniques de regularització (\textit{Dropout}) per evitar el sobreajustament, forçant la xarxa a generalitzar en lloc de memoritzar les dades abans de sotmetre la infraestructura a inferència massiva.
-
+Per garantir que la prova d'estrès generés una càrrega de processament d'imatges realista, es va descartar l'ús d'un Perceptró Multicapa (MLP) bàsic. L'estudi opta per una Xarxa Neuronal Convolucional (CNN), justificada per la seva superioritat en tasques de visió per computador en aprofitar la correlació espacial dels píxels. El disseny inclou blocs d'extracció de característiques i capes denses de classificació, generant matrius matemàtiques de pes suficient (tensors) per sotmetre la infraestructura a una inferència massiva. D'aquesta manera, el model actua com una càrrega de treball autèntica per avaluar el rendiment brut dels orquestradors a l'\textit{Edge}, evitant introduir complexitat innecessària a l'arquitectura de la xarxa neuronal.
 \section{Topologia i Estratègia de Desplegament (Patró \textit{Air-Gapped})}
 L'estudi s'estructura mitjançant un model descentralitzat compost per un node de control central i diversos nodes perimetrals (\textit{Workers}). Per evitar que les latències d'Internet o les descàrregues xarxa contaminin les mètriques de rendiment, s'adopta un patró \textit{Air-Gapped} estricte:
 
@@ -50,13 +49,21 @@ Per garantir la validesa empírica de l'estudi i evitar biaixos manuals en la re
 \end{itemize}
 
 \section{Tècniques de mesura i Mètriques d'Avaluació}
-L'avaluació es fonamenta en tres eixos d'eficiència a l'\textit{Edge}, extrets de forma automatitzada cap a un \textit{Data Lake} (CSV) per evitar biaixos manuals:
+\label{subsec:metriques_avaluacio}
+
+L'avaluació arquitectònica es fonamenta en quatre mètriques clau d'infraestructura i resiliència a l'Edge. Totes les dades s'han extret de forma automatitzada mitjançant scripts de monitoratge cap a un Data Lake (CSV) per garantir el rigor estadístic i evitar biaixos manuals:
 
 \begin{itemize}
-    \item \textbf{Consum Base de RAM (Impost Arquitectònic):} Mesura de la memòria en repòs just abans d'enviar trànsit per quantificar el sobrecost exclusiu dels dimonis de gestió (mesurat en MB).  
-    \item \textbf{Resiliència (Enginyeria del Caos):} Càlcul del Temps Mitjà de Recuperació (MTTR) forçant una eliminació abrupta i mesurant en mil·lisegons el temps exacte des de l'ordre de destrucció fins que el sistema torna a estar llest per rebre peticions.  
-    \item \textbf{Rendiment de Xarxa (\textit{Throughput}):} Volum d'imatges processades per segon sota estrès màxim per avaluar com els túnels d'encapsulament (SDN) penalitzen l'amplada de banda.
+    \item \textbf{Temps de Desplegament ($T_{deploy}$):} Mesura en segons el temps total necessari per aprovisionar els nodes, configurar l'orquestrador (imperatiu vs declaratiu) i carregar els artefactes de programari (imatges de contenidors i pesos del model) abans d'iniciar la inferència.
+    
+    \item \textbf{Consum de CPU en Repòs (\texttt{CPU\_Reposo}):} Quantifica el percentatge de processament que monopolitzen els dimonis de gestió subjacents (com el \textit{kubelet} o el \textit{containerd}) quan el sistema no rep trànsit, evidenciant la càrrega constant sobre el processador.
+    
+    \item \textbf{Consum Base de RAM (\texttt{RAM\_Reposo} o Impost Arquitectònic):} Mesura de la memòria ocupada en repòs just abans d'injectar la càrrega de treball. Serveix per quantificar el sobrecost exclusiu de la plataforma i dictaminar-ne la viabilitat operativa en dispositius perimetrals amb recursos estrictament limitats (mesurat en MB).
+    
+    \item \textbf{Resiliència i Enginyeria del Caos (MTTR):} Càlcul del Temps Mitjà de Recuperació forçant una eliminació abrupta dels contenidors actius. Es mesura en mil·lisegons el temps exacte transcorregut des de l'ordre de destrucció (fallada crítica) fins que el sistema orquestrador aconsegueix aixecar un nou servei i torna a estar llest per rebre peticions.
 \end{itemize}
 
-\section{Tractament de Dades (\textit{Data Cleansing})}
-Durant l'execució de les proves de resiliència en Kubernetes, es va registrar un valor atípic extrem (\textit{Outlier}) on el sistema va trigar més de 260.000 ms (uns 4 minuts) a recuperar-se a causa d'un bloqueig temporal (\textit{lock}) en l'alliberament de la IP virtual per part del connector de xarxa Flannel. Per garantir l'equitat i la integritat estadística de la comparativa, s'ha aplicat una tècnica d'imputació, descartant aquest error d'infraestructura puntual perquè no distorsioni la mitjana del comportament general de l'orquestrador.
+\subsection{Tractament de Dades (Data Cleansing)}
+\label{subsec:tractament_dades}
+
+Durant l'execució de les proves de resiliència en Kubernetes, es va registrar un valor atípic extrem (\textit{Outlier}) en una de les 5 iteracions, on el sistema va trigar 261.450 ms (aproximadament 4 minuts) a recuperar-se a causa d'un bloqueig temporal (\textit{lock}) en l'alliberament de la IP virtual per part del connector de xarxa Flannel. Per garantir l'equitat i no alterar la mida de la mostra estadística, no s'ha descartat aquesta execució. En el seu lloc, s'ha aplicat una tècnica d'imputació de la mitjana, substituint aquest error d'infraestructura puntual pel valor mitjà de les altres n execucions estables. Aquesta correcció permet mantenir el volum de dades original evitant que una anomalia distorsioni el comportament general de l'orquestrador.

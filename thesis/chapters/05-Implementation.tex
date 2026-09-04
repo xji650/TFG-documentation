@@ -18,47 +18,52 @@ Aquest capítol detalla la implementació tècnica de l'entorn de proves, descri
 \end{itemize}
 
 \section{Disseny i Entrenament del Model d'IA (PyTorch)}
-Per garantir que la prova d'estrès generés una càrrega de processament d'imatges realista abans de l'avaluació de la infraestructura, es va dissenyat i entrenat un model d'Intel·ligència Artificial personalitzat amb dataaset MNIST (80\% for training, 20\% for testing), descartant l'ús d'un Perceptró Multicapa (MLP) bàsic en favor d'una Xarxa Neuronal Convolucional (CNN).
+Per garantir que la prova d'estrès generés una càrrega de processament d'imatges realista abans de l'avaluació de la infraestructura, es va dissenyar i entrenar un model d'Intel·ligència Artificial personalitzat amb el \textit{dataset} MNIST (80\% per a entrenament, 20\% per a validació), descartant l'ús d'un Perceptró Multicapa (MLP) bàsic en favor d'una Xarxa Neuronal Convolucional (CNN).
 
 \begin{itemize}
     \item \textbf{Justificació de l'Arquitectura:} La decisió d'optar per una CNN respon a la seva superioritat en tasques de visió per computador, ja que permet aprofitar la correlació espacial dels píxels de les imatges.
     
     \item \textbf{Bloc d'Extracció de Característiques:} Està compost per dues capes convolucionals (\texttt{Conv2d}) que extreuen 32 i 64 mapes de característiques, respectivament. Cada convolució va seguida d'una funció d'activació no lineal (\texttt{ReLU}) i d'una capa d'agrupació (\texttt{MaxPool2d}) per reduir la dimensionalitat i el cost computacional.
     
-    \item \textbf{Tolerància al Sobreajustament (\textit{Overfitting}):} S'ha introduït una capa de regularització (\textit{Dropout}) amb una probabilitat del 25\%, la qual apaga neurones aleatòriament durant la fase d'entrenament, forçant la xarxa a generalitzar en lloc de memoritzar les dades.
-    
     \begin{lstlisting}[language=python, caption={Crear un model de Xarxa Neuronal Convolucional (CNN) amb PyTorch.}]
-    class CNN(nn.Module):
-        def __init__(self):
-            super(CNN, self).__init__()
-            self.conv1 = nn.Conv2d(1, 32, kernel_size=3, padding=1)
-            self.relu = nn.ReLU()
-            self.pool = nn.MaxPool2d(2, 2)
-            # Añadimos Dropout aquí
-            self.dropout = nn.Dropout(0.25) 
-            
-            self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
-            self.fc1 = nn.Linear(64 * 7 * 7, 128)
-            self.fc2 = nn.Linear(128, 10)
-    
-        def forward(self, x):
-            x = self.pool(self.relu(self.conv1(x)))
-            x = self.dropout(x) # Aplicamos dropout
-            x = self.pool(self.relu(self.conv2(x)))
-            x = x.view(-1, 64 * 7 * 7)
-            x = self.relu(self.fc1(x))
-            x = self.fc2(x)
-            return x
-    
-    # Initialize the CNN model
-    model = CNN()
-    print(model)
+class CNN(nn.Module):
+    def __init__(self):
+        super(CNN, self).__init__()
+        self.conv1 = nn.Conv2d(1, 32, kernel_size=3, stride=1, padding=1)
+        self.relu = nn.ReLU()
+        self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
+        
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1)
+        self.fc1 = nn.Linear(64 * 7 * 7, 128)
+        self.fc2 = nn.Linear(128, 10)
+
+    def forward(self, x):
+        x = self.pool(self.relu(self.conv1(x)))
+        x = self.pool(self.relu(self.conv2(x)))
+        x = x.reshape(-1, 64 * 7 * 7)
+        x = self.relu(self.fc1(x))
+        x = self.fc2(x)
+        return x
+
+# Initialize the CNN model
+model = CNN()
+print(model)
     \end{lstlisting}
 
-    \item \textbf{Bloc de Classificació:} Un cop aplanats els mapes de característiques mitjançant l'operació \texttt{view}, la informació es transmet a través de dues capes denses (\textit{Fully Connected} o \texttt{Linear}). Aquestes capes redueixen progressivament les dimensions fins a produir una sortida final de 10 nodes, que representen les probabilitats d'encert per als 10 dígits possibles (del 0 al 9).
+    \item \textbf{Bloc de Classificació:} Un cop aplanats els mapes de característiques mitjançant l'operació \texttt{reshape}, la informació es transmet a través de dues capes denses (\textit{Fully Connected} o \texttt{Linear}). Aquestes capes redueixen progressivament les dimensions fins a produir una sortida final de 10 nodes, que representen les probabilitats d'encert per als 10 dígits possibles (del 0 al 9).
     
-    \item \textbf{Paràmetres d'Entrenament (MLOps):} L'optimització dels pesos de la xarxa neuronal s'ha dut a terme aplicant l'algoritme de Descens de Gradient Estocàstic (SGD), configurat amb una taxa d'aprenentatge de 0.01 i un impuls (\textit{momentum}) de 0.9. La funció de cost seleccionada ha estat l'Entropia Creuada (\texttt{CrossEntropyLoss}), i s'ha establert un bucle d'entrenament tancat de 5 èpoques processant les imatges en blocs (\textit{batch size}) de 64 unitats.
+    \item \textbf{Paràmetres d'Entrenament (MLOps):} L'optimització dels pesos de la xarxa neuronal s'ha dut a terme aplicant l'algoritme de Descens de Gradient Estocàstic (SGD), configurat amb una taxa d'aprenentatge de 0.01 i un impuls (\textit{momentum}) de 0.9. La funció de cost seleccionada ha estat l'Entropia Creuada (\texttt{CrossEntropyLoss}), i s'ha establert un únic cicle d'entrenament (1 època) processant les imatges en blocs (\textit{batch size}) de 64 unitats.
 \end{itemize}
+
+\textbf{Justificació de l'Entrenament d'1 Època:}
+
+Per a l'avaluació del sistema, l'entrenament de la CNN es va configurar deliberadament per executar-se durant una única època (1 Epoch). Aquesta decisió arquitectònica es fonamenta en tres criteris clau:
+
+\begin{enumerate}
+    \item \textbf{Abast del Projecte:} L'objectiu principal d'aquest estudi és la comparativa de systemd amb kubernetes a l'entoen \textit{Edge}, no l'optimització d'hiperparàmetres en models de \textit{Deep Learning}.
+    \item \textbf{Evidència de Convergència:} Com s'observa a la corba d'aprenentatge, l'error d'entrenament (\textit{Train Loss}) experimenta una caiguda dràstica i s'estabilitza abans de finalitzar la primera iteració completa del \textit{dataset}.
+    \item \textbf{Eficiència Computacional:} En finalitzar aquesta única època, el model assoleix una precisió de validació (\textit{Validation Accuracy}) propera al 98\%. Aquest nivell d'encert és prova empírica suficient per certificar que el \textit{pipeline} d'inferència i la transmissió de tensors funcionen correctament d'extrem a extrem, evitant un consum innecessari de temps i recursos al node Orquestrador.
+\end{enumerate}
 
 
 \section{Infraestructura com a Codi: Arquitectura Nativa (Systemd)}
