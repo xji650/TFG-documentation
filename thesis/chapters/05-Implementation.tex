@@ -81,7 +81,7 @@ El sistema està dissenyat sota el paradigma de contenidors \textit{rootless} pe
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=1\textwidth]{sources/systemd-arquitectura.png}
+    \includegraphics[width=1\textwidth]{sources/systemd-architecture.png}
     \caption{Arquitectura de l'entorn nativa amb Systemd.}
     \label{fig:arquitectura_systemd}
 \end{figure}
@@ -126,7 +126,7 @@ Aquesta secció detalla l'adaptació de l'entorn cap a un model declaratiu i cen
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=1\textwidth]{sources/kubernetes-arquitectura.png}
+    \includegraphics[width=1\textwidth]{sources/k3s-architecture.png}
     \caption{Arquitectura de l'entorn nativa amb Kubernetes.}
     \label{fig:arquitectura_kubernetes}
 \end{figure}
@@ -160,14 +160,14 @@ Aquesta implementació elimina la necessitat de precompilar contractes estrictes
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=1\textwidth]{sources/full_pipeline_systemd.png}
+    \includegraphics[width=1\textwidth]{sources/systemd-flow.png}
     \caption{Topologia completa de la inferència d'IA sobre Systemd.}
     \label{fig:full_pipeline_systemd}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=1\textwidth]{sources/full_pipeline_k3s.png}
+    \includegraphics[width=1\textwidth]{sources/k3s-flow.png}
     \caption{Topologia completa de la inferència d'IA sobre K3s.}
     \label{fig:full_pipeline_k3s}
 \end{figure}
@@ -190,7 +190,7 @@ L'avaluació es fonamenta en una jerarquia de tres \textit{scripts} de Bash que 
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=1\textwidth]{sources/flow-pipeline.png}
+    \includegraphics[width=1\textwidth]{sources/pipeline-flow.png}
     \caption{Flux del pipeline d'execució automatitzada.}
     \label{fig:flow-pipeline}
 \end{figure}
@@ -232,6 +232,8 @@ with open(csv_file, 'a', encoding='utf-8') as f:
 \end{lstlisting}
 
 \section{Decisions Tècniques i Resolució de Problemes}
-La mesura precisa del MTTR va requerir solucions adaptades a cada tecnologia. Per a l'enfocament natiu, la fallada se simula amb un \texttt{podman kill} i la detecció de recuperació s'aconsegueix amb bucles \texttt{while} de 0.05 segons interrogant l'estat local del \texttt{systemctl}. Per contra, en l'entorn distribuït s'ha de fulminar el procés forçant el tancament (\texttt{kubectl delete pod --force --grace-period=0}) i esperar que el \textit{DaemonSet} assigni i validi el nou \textit{Pod} monitoritzant el seu canvi a l'estat \textit{Ready}.  
+La mesura de precisió de l'MTTR va requerir desenvolupar solucions específiques per a cada tecnologia. En l'enfocament natiu, la fallada se simula amb \texttt{podman kill} i la recuperació es detecta amb bucles \texttt{while} de 0,05 segons interrogant l'estat local de \texttt{systemctl}. En contrast, a l'entorn distribuït s'ha de forçar la terminació del procés (\texttt{kubectl delete pod --force --grace-period=0}) i esperar que el controlador (\textit{DaemonSet}) instanciï el nou \textit{Pod}, monitoritzant la transició fins a l'estat \textit{Ready}.  
 
-Durant la fase d'enginyeria del caos en l'entorn distribuït, es va identificar una incidència crítica d'infraestructura: un bloqueig (\textit{lock}) en l'alliberament de la IP virtual per part del connector Flannel, fet que va disparar el temps de recuperació d'una iteració a 261.450 ms (aproximadament 4 minuts). Per salvaguardar el rigor estadístic general, aquest valor atípic extrem es va descartar aplicant una tècnica d'imputació de la mitjana (\textit{Data Cleansing}), evitant que un error transitori de la subxarxa SDN virtual distorsionés l'avaluació global de l'orquestrador.
+Durant la fase d'enginyeria del caos en l'entorn amb Kubernetes, es va documentar una incidència crítica en la infraestructura. Concretament, en una de les execucions es va produir un valor atípic (\textit{outlier}) de 261 segons ($261.450$~ms) causat per un bloqueig (\textit{lock}) temporal en l'alliberament de la IP virtual per part del connector de xarxa Flannel. 
+
+D'acord amb les indicacions metodològiques, per facilitar la comparació del comportament habitual entre ambdós sistemes, a la secció de resultats es presentaran les mètriques estadístiques de referència (mitjana, mediana, desviació estàndard, mínim i màxim) basades exclusivament en les execucions normals, ometent aquesta dada extrema. Tanmateix, aquest esdeveniment es conserva al registre i s'analitza a fons, ja que no es tracta d'un error de mesura, sinó que evidencia un mode de fallada real i crític del sistema, propi de la complexitat estructural de les xarxes definides per programari (SDN) en entorns distribuïts.

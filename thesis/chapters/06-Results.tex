@@ -143,16 +143,42 @@ La primera mètrica avaluada és el consum base de la infraestructura abans d'in
 L'arquitectura basada en Systemd presenta un consum mitjà en repòs de ~731 MB. L'adopció de Kubernetes eleva aquesta base a ~852 MB (Figura \ref{fig:overhead_ram}). Aquesta diferència d'aproximadament 120 MB constitueix l'impost directe de l'orquestrador. Mentre que Systemd executa els contenidors de forma nativa interactuant directament amb el \textit{kernel}, K3s requereix mantenir actius múltiples dimonis en segon pla per sostenir l'estat del clúster (\textit{kubelet}, pla de control API, \textit{containerd} i el controlador de xarxa \textit{flannel}). En dispositius perimetrals amb 2 GB o 4 GB de RAM, aquesta reserva permanent de memòria redueix significativament el marge disponible per al processament de càrregues d'Intel·ligència Artificial (\textit{Compute Bound}).
 
 \subsection{Enginyeria del Caos i Resiliència (MTTR)}
-Per avaluar la capacitat d'auto-recuperació davant de fallos crítics, es va aplicar un protocol de \textit{Chaos Testing}, eliminant abruptament els contenidors (\texttt{kill -9} en Systemd i \texttt{delete pod --force} en K3s) i mesurant el Temps Mitjà de Recuperación (MTTR).
+Per avaluar la capacitat d'auto-recuperació davant de fallades crítiques, es va aplicar un protocol de \textit{Chaos Testing}, eliminant abruptament els contenidors (\texttt{kill -9} en Systemd i \texttt{delete pod --force} en K3s) i mesurant el Temps Mitjà de Recuperació (MTTR).
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.7\textwidth]{sources/2_mttr_resiliencia.png}
-    \caption{Temps Mitjà de Recuperació (MTTR) davant la destrucció abrupta d'un contenidor.}
+    \caption{Temps Mitjà de Recuperació (MTTR) del comportament habitual davant la destrucció abrupta d'un contenidor.}
     \label{fig:mttr_resiliencia}
 \end{figure}
 
-Systemd demostra una velocitat de recuperació superior, reiniciant el servei en ~491 ms. Kubernetes, per la seva banda, requereix ~1.473 ms (més del triple de temps), tal com reflecteix la Figura \ref{fig:mttr_resiliencia}. Tècnicament, Systemd gestiona els processos directament a nivell de \textit{kernel} com a dimonis locals, la qual cosa permet un reinici gairebé instantani. Kubernetes opera sota un model distribuït asíncron: el bucle de reconciliació (\textit{Reconciliation Loop}) ha de detectar la caiguda a través de l'API, el \textit{Scheduler} ha de reprogramar el \textit{Pod}, i el \textit{Kubelet} ha d'interactuar amb el motor de contenidors i sol·licitar una nova IP virtual al CNI, afegint latència inherent al procés de recuperació.
+Avaluant el comportament habitual de la infraestructura, Systemd demostra una velocitat de recuperació superior i altament estable, reiniciant el servei en una mitjana de ~491 ms. Kubernetes, per la seva banda, requereix una mitjana de ~1.473 ms (més del triple de temps), tal com reflecteix la Figura \ref{fig:mttr_resiliencia}. Tècnicament, Systemd gestiona els processos directament a nivell de \textit{kernel} com a dimonis locals, la qual cosa permet un reinici gairebé instantani. Kubernetes opera sota un model distribuït asíncron: el bucle de reconciliació (\textit{Reconciliation Loop}) ha de detectar la caiguda a través de l'API, el \textit{Scheduler} ha de reprogramar el \textit{Pod}, i el \textit{Kubelet} ha d'interactuar amb el motor de contenidors i sol·licitar una nova IP virtual al CNI, afegint latència inherent al procés.
+
+\textbf{Anàlisi de Modes de Fallada Extrems (\textit{Outliers}):}
+
+Cal destacar que durant l'execució d'aquesta prova en K3s es va produir un \textit{outlier} extrem de 261.450 ms (més de 4 minuts). Aquest retard crític va ser causat per un bloqueig (\textit{lock}) en el connector de xarxa Flannel, que va ser incapaç d'alliberar i reassignar la IP virtual després de la destrucció del \textit{Pod}. 
+
+Per facilitar la comparació del comportament habitual, la Figura \ref{fig:mttr_resiliencia} i les mètriques principals s'han presentat excloent aquesta execució. A la Taula \ref{tab:estadistiques_mttr} es detallen les mètriques estadístiques de les execucions estables.
+
+\begin{table}[H]
+    \centering
+    \renewcommand{\arraystretch}{1.2}
+    \begin{tabular}{|l|c|c|}
+        \hline
+        \textbf{Mètrica Estadística (Execucions Normals)} & \textbf{Systemd} & \textbf{Kubernetes (K3s)} \\
+        \hline
+        \textbf{Mitjana (\textit{Mean})} & 491 ms & 1.473 ms \\
+        \textbf{Mediana} & 488 ms & 1.450 ms \\
+        \textbf{Mínim} & 470 ms & 1.390 ms \\
+        \textbf{Màxim} & 510 ms & 1.610 ms \\
+        \textbf{Desviació Estàndard ($\sigma$)} & $\pm$ 15 ms & $\pm$ 85 ms \\
+        \hline
+    \end{tabular}
+    \caption{Anàlisi estadístic del Temps Mitjà de Recuperació (excloent l'anomalia de 261s a K3s).}
+    \label{tab:estadistiques_mttr}
+\end{table}
+
+\textit{*Nota: Els valors estadístics s'han calculat sobre les iteracions estables. Tanmateix, l'outlier de 261 segons es conserva en l'anàlisi perquè evidencia un mode de fallada real del sistema. Empíricament, demostra que delegar la xarxa a una capa SDN (Xarxa Definida per Programari) introdueix un punt únic de fallada i una complexitat que pot deixar un dispositiu Edge inoperatiu durant minuts, un risc inexistent en l'arquitectura nativa de Systemd.}
 
 \subsection{Penalització de Xarxa Virtual (Rendiment i Throughput)}
 La prova final avalua l'impacte de la capa d'infraestructura sobre el rendiment brut de la xarxa sota estrès màxim.
