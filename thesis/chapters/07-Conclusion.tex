@@ -18,7 +18,7 @@ S'han complert íntegrament els objectius marcats a la Introducció:
 L'estudi aporta un marc de decisió tècnica clar basat en dades històriques reals:
 \begin{itemize}
     \item \textbf{El paradigma ZeroMQ + MessagePack + Zero-Copy:} S'ha consolidat aquesta tríada com l'arquitectura de transport òptima a l'Edge. Elimina els colls d'ampolla del parseig de text, redueix la petjada de memòria a 280 MB sota estrès màxim i permet processar més de 9.000 imatges per segon en entorns natius.
-    \item \textbf{Quantificació de l'"Impost Arquitectònic":} S'ha mesurat el cost real de desplegar Kubernetes en dispositius limitats. K3s incrementa el consum de RAM en repòs un 16\% (~120 MB addicionals), triplica el temps de recuperació local (1.473 ms vers 491 ms) i redueix l'amplada de banda efectiva un 30\% a causa de l'encapsulament de la seva xarxa virtual CNI (Flannel).
+    \item \textbf{Quantificació de l'"Impost Arquitectònic":} S'ha mesurat el cost real de desplegar Kubernetes en dispositius limitats. K3s incrementa el consum de RAM en repòs un 16\% (\textasciitilde 120 MB addicionals), triplica el temps de recuperació local (1.473 ms vers 491 ms) i redueix l'amplada de banda efectiva un 30\% a causa de l'encapsulament de la seva xarxa virtual CNI (Flannel).
     \item \textbf{Matriu de Decisió:} Systemd es dictamina com la solució per a dispositius \textit{Standalone} aïllats on els recursos físics són crítics. Kubernetes justifica la seva penalització de rendiment exclusivament en flotes distribuïdes on la gestió declarativa centralitzada és imperativa.
 \end{itemize}
 

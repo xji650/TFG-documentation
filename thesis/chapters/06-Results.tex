@@ -32,14 +32,14 @@ La Taula \ref{tab:resultados_rendimiento_red} presenta les mètriques consolidad
         \hline
     \end{tabular}%
     }
-    \caption{Resultats consolidats de rendiment de xarxa per protocol a l'Edge.}
+    \caption{Resultats consolidats de rendiment de xarxa per protocol a l'Edge (9 execucions).}
     \label{tab:resultados_rendimiento_red}
 \end{table}
 
 De l'anàlisi d'aquestes mètriques i la seva representació visual, s'extreuen les següents conclusions:
 
 \textbf{1. El Coll d'Ampolla del Text Pla (HTTP/JSON)}  
-L'estàndard web tradicional es demostra totalment inviable per al processament perimetral. En no suportar transmissió binària nativa, els tensors es converteixen a text pla, inflant el \textit{payload} fins a 10,39 MB per petició. Com s'observa a la Figura \ref{fig:comparativa_protocols_throughput}, el seu rendiment queda severament estancat (~1.661 img/s). A més, la mètrica del $T_{proc}$ (268 ms) evidencia que la CPU del \textit{Worker} s'ofega intentant parsejar documents de text gegantins en lloc de calcular prediccions d'IA.
+L'estàndard web tradicional es demostra totalment inviable per al processament perimetral. En no suportar transmissió binària nativa, els tensors es converteixen a text pla, inflant el \textit{payload} fins a 10,39 MB per petició. Com s'observa a la Figura \ref{fig:comparativa_protocols_throughput}, el seu rendiment queda severament estancat (\textasciitilde 1.661 img/s). A més, la mètrica del $T_{proc}$ (268 ms) evidencia que la CPU del \textit{Worker} s'ofega intentant parsejar documents de text gegantins en lloc de calcular prediccions d'IA.
 
 \begin{figure}[H]
     \centering
@@ -97,7 +97,7 @@ L'anàlisi de les mètriques visuals extretes durant la fase d'entrenament (\tex
         \caption{Avaluació del model fundacional: Matriu de confusió en validació.}
         \label{fig:confusion_matrix}
     \end{figure}
-    La diagonal intensament fosca de la Matriu de Confusió (Figura \ref{fig:confusion_matrix}) demostra una alta taxa d'encerts (Veritables Positius), assolint una precisió de validació propera al 98\%. La baixa dispersió fora de la diagonal certifica que el model no pateix sobreajustament (\textit{overfitting}).
+    La diagonal intensament fosca de la Matriu de Confusió (Figura \ref{fig:confusion_matrix}) demostra una alta taxa d'encerts (Veritables Positius), assolint una precisió de validació propera al 98\%. La matriu de confusió mostra un bon rendiment de generalització sobre el conjunt de validació.
     
     \item \textbf{Integritat de la Transmissió (Exemples Visuals):} 
     \begin{figure}[H]
@@ -143,7 +143,7 @@ La primera mètrica avaluada és el consum base de la infraestructura abans d'in
     \label{fig:overhead_ram}
 \end{figure}
 
-L'arquitectura basada en Systemd presenta un consum mitjà en repòs de ~723 MB. L'adopció de Kubernetes eleva aquesta base a ~835 MB (Figura \ref{fig:overhead_ram}). Aquesta diferència d'aproximadament 112 MB constitueix l'impost directe de l'orquestrador. Mentre que Systemd executa els contenidors de forma nativa interactuant directament amb el \textit{kernel}, K3s requereix mantenir actius múltiples dimonis en segon pla per sostenir l'estat del clúster (\textit{kubelet}, pla de control API, \textit{containerd} i el controlador de xarxa \textit{flannel}). En dispositius perimetrals amb recursos escassos, aquesta reserva permanent de memòria redueix significativament el marge disponible per al processament de càrregues d'Intel·ligència Artificial (\textit{Compute Bound}).
+L'arquitectura basada en Systemd presenta un consum mitjà en repòs de \textasciitilde 723 MB. L'adopció de Kubernetes eleva aquesta base a \textasciitilde 835 MB (Figura \ref{fig:overhead_ram}). Aquesta diferència d'aproximadament 112 MB constitueix l'impost directe de l'orquestrador. Mentre que Systemd executa els contenidors de forma nativa interactuant directament amb el \textit{kernel}, K3s requereix mantenir actius múltiples dimonis en segon pla per sostenir l'estat del clúster (\textit{kubelet}, pla de control API, \textit{containerd} i el controlador de xarxa \textit{flannel}). En dispositius perimetrals amb recursos escassos, aquesta reserva permanent de memòria redueix significativament el marge disponible per al processament de càrregues d'Intel·ligència Artificial (\textit{Compute Bound}).
 
 \subsection{Enginyeria del Caos i Resiliència (MTTR)}
 Per avaluar la capacitat d'auto-recuperació davant de fallades crítiques, es va aplicar un protocol de \textit{Chaos Testing}, eliminant abruptament els contenidors (\texttt{kill -9} en Systemd i \texttt{delete pod --force} en K3s) i mesurant el Temps Mitjà de Recuperació (MTTR).
@@ -155,7 +155,7 @@ Per avaluar la capacitat d'auto-recuperació davant de fallades crítiques, es v
     \label{fig:mttr_resiliencia}
 \end{figure}
 
-Avaluant el comportament habitual de la infraestructura, Systemd demostra una velocitat de recuperació superior i altament estable, reiniciant el servei en una mitjana de ~468 ms. Kubernetes, per la seva banda, requereix una mitjana de ~1.574 ms (més del triple de temps), tal com reflecteix la Figura \ref{fig:mttr_resiliencia}. Tècnicament, Systemd gestiona els processos directament a nivell de \textit{kernel} com a dimonis locals, la qual cosa permet un reinici gairebé instantani. Kubernetes opera sota un model distribuït asíncron: el bucle de reconciliació (\textit{Reconciliation Loop}) ha de detectar la caiguda a través de l'API, el \textit{Scheduler} ha de reprogramar el \textit{Pod}, i el \textit{Kubelet} ha d'interactuar amb el motor de contenidors i sol·licitar una nova IP virtual al CNI, afegint latència inherent al procés.
+Avaluant el comportament habitual de la infraestructura, Systemd demostra una velocitat de recuperació superior i altament estable, reiniciant el servei en una mitjana de \textasciitilde 468 ms. Kubernetes, per la seva banda, requereix una mitjana de \textasciitilde 1.574 ms (més del triple de temps), tal com reflecteix la Figura \ref{fig:mttr_resiliencia}. Tècnicament, Systemd gestiona els processos directament a nivell de \textit{kernel} com a dimonis locals, la qual cosa permet un reinici gairebé instantani. Kubernetes opera sota un model distribuït asíncron: el bucle de reconciliació (\textit{Reconciliation Loop}) ha de detectar la caiguda a través de l'API, el \textit{Scheduler} ha de reprogramar el \textit{Pod}, i el \textit{Kubelet} ha d'interactuar amb el motor de contenidors i sol·licitar una nova IP virtual al CNI, afegint latència inherent al procés.
 
 \textbf{Anàlisi de Modes de Fallada Extrems (\textit{Outliers}):}
 
@@ -170,10 +170,13 @@ Per facilitar la comparació del comportament habitual, la Figura \ref{fig:mttr_
         \hline
         \textbf{Mètrica Estadística (Execucions Normals)} & \textbf{Systemd} & \textbf{Kubernetes (K3s)} \\
         \hline
-        \textbf{Mitjana (\textit{Mean})} & 468 ms & 1.574 ms \\
-        \textbf{Mínim Registrat} & 455 ms & 1.480 ms \\
-        \textbf{Màxim Registrat} & 495 ms & 1.685 ms \\
-        \textbf{Desviació Estàndard Aproximada ($\sigma$)} & $\pm$ 15 ms & $\pm$ 75 ms \\
+        \textbf{Mitjana (\textit{Mean})} & 474,60 ms & 1.560,53 ms \\
+        \hline
+        \textbf{Mínim Registrat} & 412,67 ms & 1.046,89 ms \\
+        \hline
+        \textbf{Màxim Registrat} & 536,81 ms & 2.305,17 ms \\
+        \hline
+        \textbf{Desviació Estàndard} & $\pm$ 31,90 ms & $\pm$ 340,30 ms \\
         \hline
     \end{tabular}
     \caption{Anàlisi estadístic del Temps Mitjà de Recuperació (excloent l'anomalia de 261s a K3s).}
@@ -192,8 +195,7 @@ La prova final avalua l'impacte de la capa d'infraestructura sobre el rendiment 
     \label{fig:throughput_comparativa}
 \end{figure}
 
-Utilitzant exactament el mateix codi font, Systemd assoleix un processament superior a les ~6.053 imatges per segon, enfront de les ~4.291 img/s que assoleix Kubernetes (Figura \ref{fig:throughput_comparativa}). Aquesta degradació d'aproximadament un 29\% en el rendiment (\textit{Throughput}) és conseqüència directa de la capa SDN (\textit{Software-Defined Networking}) de Kubernetes. En l'arquitectura Systemd, els contenidors utilitzen la xarxa del \textit{host} amb accés gairebé natiu a les interfícies físiques. En K3s, el trànsit inter-node s'ha d'encapsular i processar per Flannel (mitjançant túnels VXLAN), la qual cosa introdueix un cost addicional en cicles de CPU per empaquetar i desempaquetar cada paquet TCP, minvant l'amplada de banda efectiu per a l'aplicació.
-
+Utilitzant exactament el mateix codi font, Systemd assoleix un processament superior a les \textasciitilde 6.052 imatges per segon, enfront de les \textasciitilde 4.290 img/s que assoleix Kubernetes (Figura \ref{fig:throughput_comparativa}). Aquesta degradació del rendiment (\textit{Throughput}) és compatible amb el sobrecost introduït per la pila de xarxa de K3s, que en la configuració estudiada inclou Flannel/VXLAN i l'encaminament mitjançant NodePort. En l'arquitectura Systemd, els contenidors utilitzen una xarxa de tipus pont (\textit{bridge}) local de Podman, evitant l'encapsulament de paquets TCP a través de túnels virtuals distribuïts i reduint la càrrega de computació sobre la CPU.
 \section{Conclusions}
 L'avaluació empírica conclou que portar Kubernetes a l'Edge no és "gratuït". L'orquestrador introdueix penalitzacions tangibles: incrementa la petjada de memòria en repòs al voltant d'un 15\%, triplica el temps de recuperació local davant caigudes i redueix el rendiment de xarxa en gairebé un 30\% a causa de l'encapsulació CNI.
 
