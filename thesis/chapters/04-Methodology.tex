@@ -26,6 +26,7 @@ Per contextualitzar adequadament l'avaluació en maquinari de capacitats reduïd
         Recursos \textit{Workers} (K3s) & 2 vCPUs, 4~GB RAM, 35~GB d'emmagatzematge (ampliat per prevenir fallades per \textit{Out-Of-Memory}) \\
         Versions de programari & Podman (v4.9.3), Systemd (v255), K3s (v1.35.4+k3s1), Ansible (v2.17.14), Go (v1.25.9) \\
         Xarxa i connectivitat & Gestió via \textit{Netplan} (DHCP), interfície \texttt{ens33}, CNI Flannel (\texttt{10.42.1.0/24}) \\ \hline
+        Velocitat de l'enllaç de xarxa & 1~Gbps (Adaptador virtualitzat per VMware) \\
     \end{tabular}
     \caption{Característiques generals de l'entorn experimental.}
     \label{tab:testbed_general}
@@ -54,12 +55,6 @@ L'estudi es va estructurar en quatre etapes iteratives amb l'objectiu d'identifi
 
 \section{Selecció del Model d'IA}
 Perquè la càrrega fos representativa d'un cas d'ús real de visió artificial, es va descartar l'ús d'un Perceptró Multicapa (MLP) simple en favor d'una Xarxa Neuronal Convolucional (CNN). Aquest tipus de xarxa aprofita la correlació espacial dels píxels mitjançant operacions matricials intensives en capes convolucionals i denses. Els tensors generats sotmeten el processador i la memòria a un volum d'inferència continu, permetent avaluar el rendiment d'ambdues solucions sota una càrrega computacional representativa.
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.85\textwidth]{sources/mlp_cnn_architecture.png}
-    \caption{Arquitectura comparativa de xarxes MLP i CNN dissenyades per a tasques de classificació i regressió. Font: Adaptada de \cite{xiang2019robust}.}
-    \label{fig:arquitectura_mlp_cnn}
-\end{figure}
 
 \section{Topologia i Estratègia de Desplegament (Patró \textit{Air-Gapped})}
 L'arquitectura de la prova separa el node de gestió dels nodes d'execució (\textit{Workers}). Amb la intenció d'aïllar els resultats de variacions derivades de la connectivitat externa o del trànsit d'Internet, es va seguir una metodologia \textit{Air-Gapped}:
@@ -85,11 +80,15 @@ La recollida de dades s'ha articulat mitjançant un flux de treball completament
 L'impacte de cada arquitectura es quantifica a través de quatre indicadors principals d'infraestructura i disponibilitat:
 
 \begin{itemize}
-    \item \textbf{Temps de Desplegament ($T_{deploy}$):} Interval temporal (expressat en segons) requerit per aprovisionar el node, establir les configuracions de servei i deixar les imatges a punt per a la inferència.
-    \item \textbf{Consum de CPU en Repòs (\texttt{CPU\_Repòs}):} Percentatge mitjà d'ús de CPU atribuïble als dimonis de fons de la plataforma (\textit{kubelet}, \textit{containerd} o processos del sistema) en absència de trànsit de xarxa.
-    \item \textbf{Consum de Memòria en Repòs (\texttt{RAM\_Repòs}):} Ocupació de memòria RAM associada estrictament a la pila de programari en estat d'espera, mesurada en megabytes (MB).
-    \item \textbf{Temps Mitjà de Recuperació (MTTR):} Temps requerit pel sistema (en mil·lisegons) per restablir el servei després de provocar la terminació forçada del procés principal mitjançant senyals de caiguda abrupta.
-\end{itemize}
+    \item \textbf{Temps de Desplegament ($T_{deploy}$):} Interval temporal absolut requerit per aprovisionar el node. Inclou des de l'inici de l'execució del \textit{playbook} d'Ansible fins que els contenidors (o \textit{Pods}) assoleixen l'estat operatiu.
+    
+    \item \textbf{Rendiment Global (\textit{Throughput}):} Avalua la capacitat de la xarxa i el processador sota estrès. Es defineix com la quantitat d'imatges (tensors) processades amb èxit per unitat de temps. Si $N$ és el nombre total d'imatges enviades i $T_{total}$ és l'interval de temps en segons des de la primera petició fins a l'última resposta:
+        $$ Throughput = \frac{N}{T_{total}} \quad \text{[img/s]} $$
+    
+    \item \textbf{Consum Mitjà de Recursos (RAM i CPU):} El consum base (en repòs) s'avalua capturant $k$ mostres discretes del monitoratge del sistema (mitjançant \texttt{ps} o cgroups) durant un període d'estabilització. La petjada de memòria es calcula com la mitjana aritmètica d'aquestes lectures:
+        $$ \overline{RAM}_{rep\text{ò}s} = \frac{1}{k} \sum_{i=1}^{k} RAM_i \quad \text{[MB]} $$    \item \textbf{Temps Mitjà de Recuperació (MTTR):} Temps requerit pel sistema (en mil·lisegons) per restablir el servei després de provocar la terminació forçada del procés principal mitjançant senyals de caiguda abrupta.
+
+    \end{itemize}
 
 \subsection{Tractament de Valors Atípics (Outliers)}
 \label{subsec:tractament_dades}

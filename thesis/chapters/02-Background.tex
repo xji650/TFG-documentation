@@ -69,3 +69,12 @@ Per quantificar empíricament aquest impacte, s'utilitza com a referència el co
 Pel que fa al marc de treball d'intel·ligència artificial, tot i que TensorFlow i PyTorch dominen el mercat, s'ha seleccionat PyTorch \cite{pytorch_mnist_guide}. La seva flexibilitat en la gestió de grafs computacionals dinàmics proporciona una execució més àgil i un control estricte de la memòria, adaptant-se amb precisió a les limitacions dels nodes \textit{Edge}.
 
 Finalment, l'arquitectura de la xarxa neuronal determina el grau d'exigència computacional. En lloc d'emprar un Perceptró Multicapa (MLP) bàsic, s'ha implementat una Xarxa Neuronal Convolucional (CNN). Aquesta decisió respon a la necessitat de simular un escenari real de visió per computador: les operacions matricials pròpies d'una CNN sotmeten a un estrès real la CPU i la RAM del dispositiu, garantint que l'experiment no només avalui la xarxa, sinó que mesuri l'impacte directe de l'arquitectura sobre una càrrega de càlcul intensiva.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{sources/mlp_cnn_architecture.png}
+    \caption{Arquitectura comparativa de xarxes MLP i CNN dissenyades per a tasques de classificació i regressió. Font: Adaptada de \cite{xiang2019robust}.}
+    \label{fig:arquitectura_mlp_cnn}
+\end{figure}
+
+La Figura \ref{fig:arquitectura_mlp_cnn} il·lustra de manera conceptual l'estructura general d'una xarxa MLP i d'una CNN; les dimensions concretes hi són merament il·lustratives i no es corresponen amb l'arquitectura específica implementada en aquest treball, detallada al Capítol \ref{ch:implementation} (Listing \ref{lst:regex_extraction}).
