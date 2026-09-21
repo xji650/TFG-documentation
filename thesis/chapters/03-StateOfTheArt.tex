@@ -9,18 +9,51 @@
 
 A continuació s'exposa la revisió de l'estat de l'art organitzada segons les tendències actuals en la gestió de contenidors a l'Edge Computing, analitzant-ne les aportacions i limitacions.
 
-\section{Solucions d'Orquestració Lleugera a l'\textit{Edge} (K3s, MicroK8s)}
-Gran part de la literatura recent aposta per adaptar l'estàndard de la indústria mitjançant distribucions reduïdes de Kubernetes com K3s \cite{yakubov2025comparative}. Aquests treballs destaquen el manteniment de l'ecosistema declaratiu i l'escalabilitat horitzontal. No obstant això, estudis recents sobre consum de recursos a l'\textit{Edge} assenyalen que aquests orquestradors continuen imposant un ``Impost Arquitectònic'' permanent a causa dels processos de control (com el \texttt{kubelet} o la xarxa SDN) \cite{bellavista2023performance}.
+\section{Evolució cap a l'Edge Computing i Desplegament MLOps}
+L'expansió de l'Internet de les Coses (IoT) ha forçat una transició del processament centralitzat al núvol cap a l'\textit{Edge Computing}, apropant el còmput a l'origen de les dades per reduir la latència i l'ús d'amplada de banda \cite{shi2016edge}. En aquest context, el desplegament de models d'Intel·ligència Artificial (MLOps) en dispositius perimetrals presenta reptes crítics de maquinari. Treballs recents posen de manifest que els dispositius \textit{Edge} pateixen colls d'ampolla severs en memòria RAM i capacitat de CPU quan intenten processar matrius multidimensionals (tensors) en temps real, obligant a optimitzar tant els models com la infraestructura subjacent \cite{chen2024edgeai}.
 
-\section{Execució Nativa de Contenidors (\textit{Standalone})}
-D'altra banda, treballs previs plantegen prescindir de l'orquestració complexa i executar aplicacions mitjançant motors autònoms (Docker o Podman) per prioritzar la potència de càlcul \cite{eitt2026runtime}. Aquest enfocament maximitza el rendiment del maquinari en oferir accés a la xarxa nativa, però investigacions posteriors conclouen que se sacrifica dràsticament la tolerància a fallades i la capacitat de gestionar actualitzacions distribuïdes \cite{singh2025standalone}.
+\section{L'Impost Arquitectònic de Kubernetes (K3s, MicroK8s)}
+Gran part de la literatura recent aposta per adaptar l'estàndard \textit{Cloud-Native} mitjançant distribucions reduïdes de Kubernetes com K3s o MicroK8s \cite{yakubov2025comparative}. Tot i que K3s aconsegueix eliminar dependències pesades empaquetant el pla de control en un únic binari amb bases de dades lleugeres (SQLite), estudis de rendiment assenyalen que l'orquestrador manté un ``Impost Arquitectònic'' estructural ineludible \cite{bellavista2023performance}. Aquest sobrecost prové del cicle de reconciliació constant de l'agent \texttt{kubelet}, la gestió del \texttt{containerd} i, molt especialment, l'encapsulament de la Xarxa Definida per Programari (SDN) operada per connectors com Flannel. Recerques prèvies conclouen que, en dispositius amb limitacions severes (menys de 4 GB de RAM), aquests processos en segon pla acaparen recursos vitals que haurien de destinar-se exclusivament a la inferència computacional \cite{morabito2023lightweight}.
 
-\section{Avaluació de Protocols de Comunicació per a IA}
-En l'àmbit de la transmissió de grans volums de dades (com tensors d'IA), recerques recents comparen protocols com gRPC o ZeroMQ, identificant l'enviament asíncron amb serialització binària com la solució més eficient en latència \cite{martinez2026programmable}. Tanmateix, aquestes proves solen realitzar-se en entorns ideals, sense analitzar com l'encapsulament de paquets d'un orquestrador en segon pla pot arribar a degradar aquest rendiment.
+Dins de l'ecosistema d'orquestradors per a l'Edge, K3s competeix directament amb solucions com MicroK8s (desenvolupat per Canonical) i k0s (Mirantis). Diversos benchmarks independents assenyalen que, si bé MicroK8s ofereix una integració nativa excel·lent amb l'ecosistema Ubuntu, tendeix a presentar una petjada de memòria superior a causa de la seva arquitectura basada en snaps. En aquest sentit, K3s és sovint considerat l'estàndard de facto per a entorns amb restriccions severes, motiu pel qual ha estat la distribució escollida per representar el model distribuït en aquesta comparativa.
 
-\section{El buit que omple aquest treball}
-Tot i que el recent paradigma de delegar el cicle de vida al \textit{kernel} (utilitzant Podman integrat amb \textbf{Systemd} i orquestrat via \textbf{Ansible}) s'ha presentat com una solució tecnològica prometedora, fins avui hi ha una \textbf{falta de proves empíriques}: no existeixen estudis acadèmics ni proves de rendiment que hagin mesurat exactament quants recursos s'estalvien en aplicar aquesta arquitectura novedosa.
+Un dels components que genera més sobrecost estructural en Kubernetes és el connector de xarxa (CNI). Solucions tradicionals com Flannel o Calico basen el seu funcionament en l'encapsulament de paquets (mitjançant túnels VXLAN o IPIP) i l'ús de regles iptables. La literatura recent apunta cap a una nova generació de connectors basats en eBPF (com Cilium), els quals eliminen gran part de l'overhead de xarxa en processar els paquets directament a l'espai del kernel. Malgrat aquesta evolució, la configuració per defecte de K3s manté Flannel per la seva extrema simplicitat, un factor que serà avaluat críticament en aquest treball.
 
-Aquest treball omple precisament aquest buit científic quantificant, per primera vegada i amb dades objectives, el sobrecost operatiu de Kubernetes. L'estudi no es limita a proposar teòricament l'ús de Systemd, sinó que aporta la mètrica exacta del rendiment que es recupera en descartar l'orquestrador tradicional. 
+\section{Execució Nativa, Contenidors Rootless i Systemd}
+Una línia d'investigació alternativa planteja prescindir de l'orquestració distribuïda per maximitzar la potència de càlcul mitjançant motors autònoms \textit{Standalone} \cite{eitt2026runtime}. L'evolució cap a contenidors \textit{rootless} (sense privilegis d'administrador) liderada per tecnologies com Podman, combinada amb la gestió de cicles de vida directament a través del \textit{kernel} de Linux mitjançant \textbf{Systemd} (Quadlets), ha permès eliminar el sobrecost històric de dimonis centralitzats com el de Docker \cite{singh2025standalone}. Aquest enfocament permet operar amb una xarxa de tipus pont (bridge) local, evitant l'encapsulament de paquets propi de les xarxes virtuals distribuïdes (SDN), la qual cosa redueix la latència respecte a solucions com Flannel/VXLAN. No obstant això, la literatura adverteix que el model \textit{Standalone} sacrifica dràsticament l'escalabilitat i la tolerància a fallades, obligant els enginyers a utilitzar eines d'aprovisionament declaratiu com \textbf{Ansible} per emular un pla de control extern \cite{gomez2024edgeorchestration}.
 
-Avaluant empíricament ambdues plataformes sota càrregues d'estrès, el treball demostra amb xifres inèdites com l'alternativa nativa de Systemd minimitza el consum de memòria RAM en repòs, elimina el coll d'ampolla de les xarxes virtuals (SDN) per maximitzar el processament brut, i accelera l'auto-recuperació davant de fallades crítiques. D'aquesta manera, la investigació proporciona la justificació empírica que faltava a la indústria per validar Systemd com el substitut òptim de Kubernetes en escenaris d'Intel·ligència Artificial on cada megabyte compta.
+\section{Eficiència en la Transmissió de Tensors (Protocols i Serialització)}
+En l'àmbit específic de la transmissió de grans volums de dades entre el pla de control i els nodes perimetrals, l'estat de l'art demostra empíricament la ineficiència dels estàndards web tradicionals. L'ús de HTTP/REST amb text pla (JSON) genera bloquejos inassumibles a causa de l'alt cost computacional de deserialització (\textit{parsing}) \cite{li2025data}. 
+
+Com a alternativa, la recerca es decanta per protocols de serialització binària com gRPC (sobre HTTP/2) o solucions directes \textit{brokerless} com ZeroMQ \cite{martinez2026programmable}. Estudis recents focalitzats en el processament científic i MLOps destaquen que l'ús de formats binaris sense esquema (\textit{schema-less}), com MessagePack, permet aplicar tècniques de \textit{Zero-Copy} directament sobre matrius a la memòria RAM (\texttt{numpy}). Això accelera dràsticament l'entrada de dades a la xarxa neuronal sense ofegar el processador \cite{zhao2024efficient}. Tanmateix, la gran majoria d'aquests bancs de proves s'executen en entorns de xarxa ideals, sense analitzar com l'encapsulament de paquets d'un orquestrador subjacent (com els túnels VXLAN de Kubernetes) pot arribar a degradar aquest alt rendiment teòric.
+
+\section{El buit científic que omple aquest treball}
+Tot i l'abundant literatura sobre l'adopció d'arquitectures Cloud-Native i l'optimització de models d'Intel·ligència Artificial a l'extrem perimetral, fins on abasta la nostra revisió, no s'han identificat treballs previs que aïllin i quantifiquin empíricament l'impacte exacte de l'orquestrador sobre el rendiment brut de la xarxa combinat amb serialització binària dinàmica. Tampoc s'han identificat estudis que hagin mesurat, en aquest escenari concret, quants recursos es poden recuperar en substituir Kubernetes per una pila nativa basada en Systemd i Podman.
+
+Aquest treball pretén contribuir a omplir aquest buit, aportant dades objectives extretes de proves d'estrès sobre el sobrecost operatiu de Kubernetes a l'Edge en un cas d'ús real de visió per computador. Els resultats mostren, amb dades pròpies, com l'alternativa nativa de Systemd redueix el consum de memòria RAM en repòs, redueix la penalització de les xarxes virtuals sobre l'amplada de banda amb ZeroMQ, i millora el Temps Mitjà de Recuperació (MTTR) respecte al model distribuït de K3s en les condicions avaluades.
+
+\section{Síntesi de Treballs Relacionats}
+\label{sec:sintesi_estat_art}
+
+La Taula \ref{tab:estat_art} presenta un resum comparatiu dels treballs més rellevants analitzats en aquesta revisió, destacant-ne l'enfocament principal i la limitació que justifica la present recerca.
+
+\begin{table}[h]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{p{3cm} p{3.5cm} p{4.5cm} p{4.5cm}}
+\toprule
+\textbf{Referència} & \textbf{Plataforma Avaluada} & \textbf{Mètrica Principal} & \textbf{Limitació respecte a aquest TFG} \\
+\midrule
+Morabito et al. \cite{morabito2023lightweight} & K3s vs MicroK8s & Consum de RAM i CPU & No avalua aplicacions d'IA ni l'impacte de la xarxa (CNI) sota estrès. \\
+\addlinespace
+Gomez et al. \cite{gomez2024edgeorchestration} & Contenidors Standalone & Temps de desplegament & No compara directament l'arquitectura nativa amb Kubernetes en el mateix hardware. \\
+\addlinespace
+Zhao et al. \cite{zhao2024efficient} & ZeroMQ i Formats Binaris & Throughput de xarxa & S'executa en entorns ideals, sense mesurar l'impacte d'una xarxa virtualitzada (SDN). \\
+\addlinespace
+\textbf{Aquest treball} & \textbf{Systemd vs K3s} & \textbf{RAM, MTTR i Throughput} & \textbf{Avalua el sobrecost combinat d'orquestració i xarxa en inferència MLOps real.} \\
+\bottomrule
+\end{tabular}%
+}
+\caption{Comparativa d'estudis relacionats amb l'orquestració i rendiment a l'Edge.}
+\label{tab:estat_art}
+\end{table}

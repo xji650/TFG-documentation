@@ -25,7 +25,7 @@ Per garantir que la prova d'estrès generés una càrrega de processament d'imat
     
     \item \textbf{Bloc d'Extracció de Característiques:} Està compost per dues capes convolucionals (\texttt{Conv2d}) que extreuen 32 i 64 mapes de característiques, respectivament. Cada convolució va seguida d'una funció d'activació no lineal (\texttt{ReLU}) i d'una capa d'agrupació (\texttt{MaxPool2d}) per reduir la dimensionalitat i el cost computacional.
     
-    \begin{lstlisting}[language=python, caption={Crear un model de Xarxa Neuronal Convolucional (CNN) amb PyTorch.}]
+    \begin{lstlisting}[language=python, caption={Crear un model de Xarxa Neuronal Convolucional (CNN) amb PyTorch.}, label={lst:cnn_model}]
 class CNN(nn.Module):
     def __init__(self):
         super(CNN, self).__init__()
@@ -60,7 +60,7 @@ print(model)
 Per a l'avaluació del sistema, l'entrenament de la CNN es va configurar deliberadament per executar-se durant una única època (1 Epoch). Aquesta decisió arquitectònica es fonamenta en tres criteris clau:
 
 \begin{enumerate}
-    \item \textbf{Abast del Projecte:} L'objectiu principal d'aquest estudi és la comparativa de systemd amb kubernetes a l'entoen \textit{Edge}, no l'optimització d'hiperparàmetres en models de \textit{Deep Learning}.
+    \item \textbf{Abast del Projecte:} L'objectiu principal d'aquest estudi és la comparativa de Systemd amb Kubernetes a l'entorn \textit{Edge}, no l'optimització d'hiperparàmetres en models de \textit{Deep Learning}.
     \item \textbf{Evidència de Convergència:} Com s'observa a la corba d'aprenentatge, l'error d'entrenament (\textit{Train Loss}) experimenta una caiguda dràstica i s'estabilitza abans de finalitzar la primera iteració completa del \textit{dataset}.
     \item \textbf{Eficiència Computacional:} En finalitzar aquesta única època, el model assoleix una precisió de validació (\textit{Validation Accuracy}) propera al 98\%. Aquest nivell d'encert és prova empírica suficient per certificar que el \textit{pipeline} d'inferència i la transmissió de tensors funcionen correctament d'extrem a extrem, evitant un consum innecessari de temps i recursos al node Orquestrador.
 \end{enumerate}
@@ -76,12 +76,12 @@ El sistema està dissenyat sota el paradigma de contenidors \textit{rootless} pe
 \begin{itemize}
     \item \textbf{Systemd Linger:} S'habilita la persistència de processos en segon pla per a l'usuari del sistema (\texttt{littledragon}) executant \texttt{loginctl enable-linger}. Això garanteix que els serveis es mantinguin actius un cop tancada la sessió SSH.
     \item \textbf{Podman Quadlets:} S'elimina l'ús tradicional de \texttt{docker-compose}. L'estat desitjat es declara mitjançant Quadlets, injectant plantilles Jinja2 directament a \texttt{\textasciitilde{}/.config/containers/systemd/} per generar xarxes (\texttt{red.network}) i contenidors (\texttt{worker.container}) de forma nativa.
-    \item \textbf{Aïllament i Alta Disponibilitat:} El sistema crea una xarxa virtual dedicada (\texttt{red-interna}). A més, la unitat de Systemd aplica polítiques d'auto-recuperació (\texttt{Restart=always} amb 3 segons d'espera) per garantir la resiliència del \textit{Worker} davant de fallades.
+    \item \textbf{Aïllament i Resiliència Local:} El sistema crea una xarxa virtual dedicada (\texttt{red-interna}). A més, la unitat de Systemd aplica polítiques d'auto-recuperació (\texttt{Restart=always} amb reinici immediat) per garantir la resiliència del \textit{Worker} davant de fallades.
 \end{itemize}
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=1\textwidth]{sources/systemd-arquitectura.png}
+    \includegraphics[width=1\textwidth]{sources/systemd-architecture.png}
     \caption{Arquitectura de l'entorn nativa amb Systemd.}
     \label{fig:arquitectura_systemd}
 \end{figure}
@@ -126,7 +126,7 @@ Aquesta secció detalla l'adaptació de l'entorn cap a un model declaratiu i cen
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=1\textwidth]{sources/kubernetes-arquitectura.png}
+    \includegraphics[width=1\textwidth]{sources/k3s-architecture.png}
     \caption{Arquitectura de l'entorn nativa amb Kubernetes.}
     \label{fig:arquitectura_kubernetes}
 \end{figure}
@@ -160,14 +160,14 @@ Aquesta implementació elimina la necessitat de precompilar contractes estrictes
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=1\textwidth]{sources/full_pipeline_systemd.png}
+    \includegraphics[width=1\textwidth]{sources/systemd-flow.png}
     \caption{Topologia completa de la inferència d'IA sobre Systemd.}
     \label{fig:full_pipeline_systemd}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=1\textwidth]{sources/full_pipeline_k3s.png}
+    \includegraphics[width=1\textwidth]{sources/k3s-flow.png}
     \caption{Topologia completa de la inferència d'IA sobre K3s.}
     \label{fig:full_pipeline_k3s}
 \end{figure}
@@ -190,7 +190,7 @@ L'avaluació es fonamenta en una jerarquia de tres \textit{scripts} de Bash que 
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=1\textwidth]{sources/flow-pipeline.png}
+    \includegraphics[width=1\textwidth]{sources/pipeline-flow.png}
     \caption{Flux del pipeline d'execució automatitzada.}
     \label{fig:flow-pipeline}
 \end{figure}
@@ -200,38 +200,38 @@ Un cop l'entorn físic està estabilitzat, aquest orquestrador mestre invoca els
 \begin{itemize}
     \item \textbf{Inicialització i Estabilització:} S'executa una neteja total de l'entorn previ i es desplega la infraestructura des de zero. S'apliquen pauses d'estabilització (de 15 segons en K3s) per permetre que els processos en segon pla com el \textit{metrics-server} s'assentin i recullin dades fiables del consum base.
     \item \textbf{Enginyeria del Caos:} Destrucció abrupta del procés actiu i mesura mil·limètrica del Temps Mitjà de Recuperació (MTTR) mitjançant consultes iteratives a l'estat del sistema.
-    \item \textbf{Bucle d'Estrès i Extracció (\textit{Data Lake}):} Execució de 5 llançaments consecutius del client Python per saturar la xarxa. Un cop finalitzats, un \textit{script} de Python incrustat dins de Bash analitza els registres en text pla mitjançant expressions regulars (Regex) i bolca dinàmicament totes les mètriques estructurades (latència, \textit{Throughput}, memòria màxima, etc.) al fitxer consolidat \texttt{resultados\_globales.csv}.
+    \item \textbf{Bucle d'Estrès i Extracció (\textit{Data Lake}):} Execució de 10 llançaments consecutius del client Python per saturar la xarxa. Un cop finalitzats, un \textit{script} de Python incrustat dins de Bash analitza els registres en text pla mitjançant expressions regulars (Regex) i bolca dinàmicament totes les mètriques estructurades (latència, \textit{Throughput}, memòria màxima, etc.) al fitxer consolidat \texttt{resultados\_globales.csv}.
 \end{itemize}
 
-\begin{lstlisting}[language=Python, caption={Extracció de mètriques Regex cap al Data Lake CSV incrustada en Bash}]
-# Extracción de Infraestructura
+\begin{lstlisting}[language=Python, caption={Extracció de mètriques mitjançant expressions regulars cap al Data Lake CSV}, label={lst:regex_extraction}]
+# Extracció d'infraestructura
 t_deploy = get_avg(log_file, r"T_deploy total:\s*([0-9\.]+)")
-cpu_reposo = get_avg(log_file, r"CPU Reposo \(Global\):\s*([0-9\.]+)%")
-# Podman suele devolver '15.2MB' o '15.2MiB', el regex coge el 15.2 perfecto
-ram_reposo = get_avg(log_file, r"RAM Reposo \(Global\):\s*([0-9\.]+)")
-mttr = get_avg(log_file, r"Tiempo Real Arranque:\s*([0-9\.]+)")
+cpu_reposo = get_avg(log_file, r"CPU en Repòs \(Global\):\s*([0-9\.]+)")
+ram_reposo = get_avg(log_file, r"RAM en Repòs \(Global\):\s*([0-9\.]+)")
+mttr = get_avg(log_file, r"Temps Real Arrencada:\s*([0-9\.]+)")
 
-# Extracción de Red (Añadida la Tasa de Éxito)
-t_total = get_avg(log_file, r"Tiempo Total \(s\):\s*([0-9\.]+)")
+# Extracció de xarxa (Inclou la taxa d'èxit)
+t_total = get_avg(log_file, r"Temps Total \(s\):\s*([0-9\.]+)")
 throughput = get_avg(log_file, r"Throughput \(img/s\):\s*([0-9\.]+)")
-# Regex tolerante: Atrapa "Tasa Éxito" o "Tasa de Éxito"
-tasa_exito = get_avg(log_file, r"Tasa(?: de)? Éxito \(%\):\s*([0-9\.]+)") 
-rtt = get_avg(log_file, r"Latencia RTT Promedio \(ms\):\s*([0-9\.]+)")
-t_proc = get_avg(log_file, r"Tiempo T_proc Promedio \(ms\):\s*([0-9\.]+)")
-ram_max = get_avg(log_file, r"Pico Máx\. RAM Worker \(MB\):\s*([0-9\.]+)")
-cpu_max = get_avg(log_file, r"CPU Promedio \(%\):\s*([0-9\.]+)")
-payload_nodo = get_avg(log_file, r"Payload Promedio por Nodo \(MB\):\s*([0-9\.]+)")
+# Expressió regular tolerant: Captura "Taxa Èxit" o "Taxa d'Èxit"
+tasa_exito = get_avg(log_file, r"Taxa(?: d')?\s*Èxit \(%\):\s*([0-9\.]+)")
+rtt = get_avg(log_file, r"Latència RTT Mitjana \(ms\):\s*([0-9\.]+)")
+t_proc = get_avg(log_file, r"Temps T_proc Mitjana \(ms\):\s*([0-9\.]+)")
+ram_max = get_avg(log_file, r"Pic Màx.\. RAM Worker \(MB\):\s*([0-9\.]+)")
+cpu_max = get_avg(log_file, r"CPU Mitjana \(%\):\s*([0-9\.]+)")
+payload_nodo = get_avg(log_file, r"Payload Mitjana per Node \(MB\):\s*([0-9\.]+)")
 
-# Escribir en CSV
+# Escriure al fitxer CSV
 file_exists = os.path.isfile(csv_file)
 with open(csv_file, 'a', encoding='utf-8') as f:
     if not file_exists:
-        f.write("Fecha,Protocolo,T_deploy,CPU_Reposo,RAM_Reposo,MTTR,T_Total,Throughput,Exito_%,RTT,T_Proc,RAM_Max,CPU_Max,Payload_MB\n")
-        
-    f.write(f"{fecha},{protocol_name},{t_deploy:.2f},{cpu_reposo:.2f},{ram_reposo:.2f},{mttr:.2f},{t_total:.2f},{throughput:.2f},{tasa_exito:.2f},{rtt:.2f},{t_proc:.2f},{ram_max:.2f},{cpu_max:.2f},{payload_nodo:.2f}\n")
+        f.write("Fecha, Protocolo, T_deploy, CPU_Reposo, RAM_Reposo, MTTR, T_Total, Throughput, Exito_%, RTT, T_Proc, RAM_Max, CPU_Max, Payload_MB\n")
+    f.write(f"{fecha}, {protocol_name}, {t_deploy:.2f}, {cpu_reposo:.2f}, {ram_reposo:.2f}, {mttr:.2f}, {t_total:.2f}, {throughput:.2f}, {tasa_exito:.2f}, {rtt:.2f}, {t_proc:.2f}, {ram_max:.2f}, {cpu_max:.2f}, {payload_nodo:.2f}\n")
 \end{lstlisting}
 
 \section{Decisions Tècniques i Resolució de Problemes}
-La mesura precisa del MTTR va requerir solucions adaptades a cada tecnologia. Per a l'enfocament natiu, la fallada se simula amb un \texttt{podman kill} i la detecció de recuperació s'aconsegueix amb bucles \texttt{while} de 0.05 segons interrogant l'estat local del \texttt{systemctl}. Per contra, en l'entorn distribuït s'ha de fulminar el procés forçant el tancament (\texttt{kubectl delete pod --force --grace-period=0}) i esperar que el \textit{DaemonSet} assigni i validi el nou \textit{Pod} monitoritzant el seu canvi a l'estat \textit{Ready}.  
+La mesura de precisió de l'MTTR va requerir desenvolupar solucions específiques per a cada tecnologia. En l'enfocament natiu, la fallada se simula amb \texttt{podman kill} i la recuperació es detecta amb bucles \texttt{while} de 0,05 segons interrogant l'estat local de \texttt{systemctl}. En contrast, a l'entorn distribuït s'ha de forçar la terminació del procés (\texttt{kubectl delete pod --force --grace-period=0}) i esperar que el controlador (\textit{DaemonSet}) instanciï el nou \textit{Pod}, monitoritzant la transició fins a l'estat \textit{Ready}.  
 
-Durant la fase d'enginyeria del caos en l'entorn distribuït, es va identificar una incidència crítica d'infraestructura: un bloqueig (\textit{lock}) en l'alliberament de la IP virtual per part del connector Flannel, fet que va disparar el temps de recuperació d'una iteració a 261.450 ms (aproximadament 4 minuts). Per salvaguardar el rigor estadístic general, aquest valor atípic extrem es va descartar aplicant una tècnica d'imputació de la mitjana (\textit{Data Cleansing}), evitant que un error transitori de la subxarxa SDN virtual distorsionés l'avaluació global de l'orquestrador.
+Durant la fase d'enginyeria del caos en l'entorn amb Kubernetes, es va documentar una incidència crítica en la infraestructura. Concretament, en una de les execucions es va produir un valor atípic (\textit{outlier}) de 261 segons ($261.450$~ms) causat per un bloqueig (\textit{lock}) temporal en l'alliberament de la IP virtual per part del connector de xarxa Flannel. 
+
+D'acord amb les indicacions metodològiques, per facilitar la comparació del comportament habitual entre ambdós sistemes, a la secció de resultats es presentaran les mètriques estadístiques de referència (mitjana, mediana, desviació estàndard, mínim i màxim) basades exclusivament en les execucions normals, ometent aquesta dada extrema. Tanmateix, aquest esdeveniment es conserva al registre i s'analitza a fons, ja que no es tracta d'un error de mesura, sinó que evidencia un mode de fallada real i crític del sistema, propi de la complexitat estructural de les xarxes definides per programari (SDN) en entorns distribuïts.
