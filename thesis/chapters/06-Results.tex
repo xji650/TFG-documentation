@@ -121,18 +121,18 @@ L'objectiu d'aquesta comparativa és quantificar el Sobrecost Estructural (\text
     \toprule
     \textbf{Mètrica} & \textbf{Systemd (Natiu)} & \textbf{Kubernetes (K3s)} \\
     \midrule
-    T\_deploy (Aprovisionament) & 218,67~s & 141,18~s \\
+    T\_deploy (Aprovisionament) & 218,67~s & 145,16~s \\
     Recuperació (MTTR) & 452,09~ms & 1.487,28~ms \\
-    CPU Repòs & <0,1~\% & 0,78~\% \\
-    RAM Repòs (Sobrecost Estructural) & 722,50~MB & 834,50~MB \\
-    Throughput d'Injecció & 9.053,76~img/s & 6.035,84~img/s \\
+    CPU Repòs & <0,1~\% & 0,80~\% \\
+    RAM Repòs (Sobrecost Estructural) & 722,50~MB & 834,40~MB \\
+    Throughput d'Injecció & 9.053,76~img/s & 6.269,21~img/s \\
     \bottomrule
     \end{tabular}
     \caption{Comparativa global de rendiment i infraestructura: Protocol ZeroMQ-MessagePack (mitjana de 10 execucions).}
     \label{tab:comparativa_final}
 \end{table}
 
-Cal destacar que, pel que fa a l'aprovisionament (T\_deploy), K3s desplega més ràpid que Systemd (141,18 s enfront de 218,67 s). Això s'explica per la capacitat del Kubelet de K3s per paral·lelitzar i gestionar eficientment l'extracció de les imatges de la seva memòria cau interna a través del containerd, en contrast amb el procés seqüencial de càrrega d'artefactes aïllats que imposa l'automatització via Ansible a l'entorn natiu.
+Cal destacar que, pel que fa a l'aprovisionament (T\_deploy), K3s desplega més ràpid que Systemd (145,16 s enfront de 218,67 s). Això s'explica per la capacitat del Kubelet de K3s per paral·lelitzar i gestionar eficientment l'extracció de les imatges de la seva memòria cau interna a través del containerd, en contrast amb el procés seqüencial de càrrega d'artefactes aïllats que imposa l'automatització via Ansible a l'entorn natiu.
 
 \subsection{L'Impost Arquitectònic (Consum de RAM en Repòs)}
 La primera mètrica avaluada és el consum base de la infraestructura abans d'injectar càrrega de treball, mesurat directament a nivell del sistema operatiu.
@@ -201,7 +201,7 @@ La prova final avalua l'impacte de la capa d'infraestructura sobre el rendiment 
     \label{fig:throughput_comparativa}
 \end{figure}
 
-Utilitzant exactament el mateix codi font, Systemd assoleix un processament de \textbf{\textasciitilde 9.054~img/s}, enfront de les \textbf{\textasciitilde 6.036~img/s} que assoleix Kubernetes (Figura \ref{fig:throughput_comparativa}). Aquesta degradació del rendiment (un \textbf{31~\%} inferior) és compatible amb el sobrecost introduït per la pila de xarxa de K3s, que en la configuració estudiada inclou Flannel/VXLAN i l'encaminament mitjançant NodePort. En l'arquitectura Systemd, els contenidors utilitzen una xarxa de tipus pont (\textit{bridge}) local de Podman, evitant l'encapsulament de paquets TCP a través de túnels virtuals distribuïts i reduint la càrrega de computació sobre la CPU.
+Utilitzant exactament el mateix codi font, Systemd assoleix un processament de \textbf{\textasciitilde 9.054~img/s}, enfront de les \textbf{\textasciitilde 6.269~img/s} que assoleix Kubernetes (Figura \ref{fig:throughput_comparativa}). Aquesta degradació del rendiment (un \textbf{31~\%} inferior) és compatible amb el sobrecost introduït per la pila de xarxa de K3s, que en la configuració estudiada inclou Flannel/VXLAN i l'encaminament mitjançant NodePort. En l'arquitectura Systemd, els contenidors utilitzen una xarxa de tipus pont (\textit{bridge}) local de Podman, evitant l'encapsulament de paquets TCP a través de túnels virtuals distribuïts i reduint la càrrega de computació sobre la CPU.
 
 \section{Conclusions}
 L'avaluació empírica conclou que portar Kubernetes a l'Edge no és "gratuït". L'orquestrador introdueix penalitzacions tangibles: incrementa la petjada de memòria en repòs al voltant d'un 15~\%, triplica el temps de recuperació local davant caigudes i redueix el rendiment de xarxa en gairebé un 31~\% a causa de l'encapsulació CNI.
