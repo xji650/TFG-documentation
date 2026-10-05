@@ -37,23 +37,24 @@ Aquest treball pretén contribuir a omplir aquest buit, aportant dades objective
 
 La Taula \ref{tab:estat_art} presenta un resum comparatiu dels treballs més rellevants analitzats en aquesta revisió, destacant-ne l'enfocament principal i la limitació que justifica la present recerca.
 
-\begin{table}[h]
-\centering
-\resizebox{\textwidth}{!}{%
-\begin{tabular}{p{3cm} p{3.5cm} p{4.5cm} p{4.5cm}}
-\toprule
-\textbf{Referència} & \textbf{Plataforma Avaluada} & \textbf{Mètrica Principal} & \textbf{Limitació respecte a aquest TFG} \\
-\midrule
-Morabito et al. \cite{morabito2023lightweight} & K3s vs MicroK8s & Consum de RAM i CPU & No avalua aplicacions d'IA ni l'impacte de la xarxa (CNI) sota estrès. \\
-\addlinespace
-Gomez et al. \cite{gomez2024edgeorchestration} & Contenidors Standalone & Temps de desplegament & No compara directament l'arquitectura nativa amb Kubernetes en el mateix hardware. \\
-\addlinespace
-Zhao et al. \cite{zhao2024efficient} & ZeroMQ i Formats Binaris & Throughput de xarxa & S'executa en entorns ideals, sense mesurar l'impacte d'una xarxa virtualitzada (SDN). \\
-\addlinespace
-\textbf{Aquest treball} & \textbf{Systemd vs K3s} & \textbf{RAM, MTTR i Throughput} & \textbf{Avalua el sobrecost combinat d'orquestració i xarxa en inferència MLOps real.} \\
-\bottomrule
-\end{tabular}%
-}
-\caption{Comparativa d'estudis relacionats amb l'orquestració i rendiment a l'Edge.}
-\label{tab:estat_art}
+\begin{table}[htbp]
+    \centering
+    \renewcommand{\arraystretch}{1.2}
+    \small
+    \setlength{\tabcolsep}{4pt}
+    \begin{tabular}{p{2.8cm} p{3.7cm} p{3cm} p{6.4cm}}
+    \toprule
+    \textbf{Referència} & \textbf{Plataforma Avaluada} & \textbf{Mètrica Principal} & \textbf{Limitació respecte a aquest TFG} \\
+    \midrule
+    Morabito et al. \cite{morabito2023lightweight} & K3s vs MicroK8s & Consum de RAM i CPU & No avalua aplicacions d'IA ni l'impacte de la xarxa (CNI) sota estrès. \\
+    \addlinespace
+    Casola et al. \cite{casola2024declarative} & Contenidors Standalone & Temps de desplegament & No compara directament l'arquitectura nativa amb Kubernetes en el mateix hardware. \\
+    \addlinespace
+    Zhao et al. \cite{zhao2024efficient} & ZeroMQ i Formats Binaris & Throughput de xarxa & S'executa en entorns ideals, sense mesurar l'impacte d'una xarxa virtualitzada (SDN). \\
+    \addlinespace
+    \textbf{Aquest treball} & \textbf{Systemd vs K3s} & \textbf{RAM, MTTR i Throughput} & \textbf{Avalua el sobrecost combinat d'orquestració i xarxa en inferència MLOps real.} \\
+    \bottomrule
+    \end{tabular}
+    \caption{Comparativa d'estudis relacionats amb l'orquestració i rendiment a l'Edge.}
+    \label{tab:estat_art}
 \end{table}

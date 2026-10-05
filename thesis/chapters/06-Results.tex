@@ -16,6 +16,7 @@ La Taula \ref{tab:resultados_rendimiento_red} presenta les mètriques consolidad
 
 \begin{table}[h]
     \centering
+    \renewcommand{\arraystretch}{1.2}
     \resizebox{\textwidth}{!}{%
     \begin{tabular}{l c c c c c c c}
     \toprule
@@ -117,6 +118,7 @@ L'objectiu d'aquesta comparativa és quantificar el Sobrecost Estructural (\text
 
 \begin{table}[h]
     \centering
+    \renewcommand{\arraystretch}{1.2}
     \begin{tabular}{l c c}
     \toprule
     \textbf{Mètrica} & \textbf{Systemd (Natiu)} & \textbf{Kubernetes (K3s)} \\
@@ -172,20 +174,16 @@ Tanmateix, aquest registre es conserva i s'analitza perquè evidencia un mode de
 \begin{table}[H]
     \centering
     \renewcommand{\arraystretch}{1.2}
-    \begin{tabular}{|l|c|c|}
-        \hline
+    \begin{tabular}{lcc}
+        \toprule
         \textbf{Mètrica Estadística (Execucions Normals)} & \textbf{Systemd} & \textbf{Kubernetes (K3s)} \\
-        \hline
-        \textbf{Mitjana (\textit{Mean})} & 452,09~ms & 1.487,28~ms \\
-        \hline
-        \textbf{Mediana (\textit{Median})} & 454,76~ms & 1.369,67~ms \\
-        \hline
-        \textbf{Mínim Registrat} & 403,15~ms & 973,70~ms \\
-        \hline
-        \textbf{Màxim Registrat} & 509,38~ms & 2.170,28~ms \\
-        \hline
-        \textbf{Desviació Estàndard} & \textpm 45,38~ms & \textpm 405,20~ms \\
-        \hline
+        \midrule
+        \textbf{Mitjana (\textit{Mean})}       & 452,09~ms  & 1.487,28~ms \\
+        \textbf{Mediana (\textit{Median})}     & 454,76~ms  & 1.369,67~ms \\
+        \textbf{Mínim Registrat}               & 403,15~ms  & 973,70~ms  \\
+        \textbf{Màxim Registrat}               & 509,38~ms  & 2.170,28~ms \\
+        \textbf{Desviació Estàndard}           & \textpm 45,38~ms & \textpm 405,20~ms \\
+        \bottomrule
     \end{tabular}
     \caption{Anàlisi estadístic del Temps Mitjà de Recuperació (excloent l'anomalia estructural de més de 4~minuts a K3s).}
     \label{tab:estadistiques_mttr}

@@ -14,7 +14,8 @@ Per contextualitzar adequadament l'avaluació en maquinari de capacitats reduïd
 
 \begin{table}[htbp]
     \centering
-    \begin{tabular}{l p{10.5cm}}
+    \renewcommand{\arraystretch}{1.4}
+    \begin{tabular}{l p{10cm}}
         \hline
         \textbf{Component / Paràmetre} & \textbf{Especificació tècnica} \\ \hline
         Arquitectura base (amfitrió) & Intel Core i9-14900HX (x86\_64) \\
@@ -22,22 +23,24 @@ Per contextualitzar adequadament l'avaluació en maquinari de capacitats reduïd
         S.O. i nucli (Mestre) & Ubuntu 22.04.5 LTS -- Linux Kernel 6.18.x (Microsoft Standard) \\
         S.O. i nucli (\textit{Workers}) & Ubuntu 24.04.4 LTS (mode \textit{headless}) -- Linux Kernel 6.8.0-138-generic \\
         Recursos Node Mestre & 32 vCPUs, 16~GB RAM, 1~TB d'emmagatzematge \\
-        Recursos \textit{Workers} (Systemd) & 2 vCPUs, 2~GB RAM, 20~GB d'emmagatzematge NVMe/SATA \\
-        Recursos \textit{Workers} (K3s) & 2 vCPUs, 4~GB RAM, 35~GB d'emmagatzematge (ampliat per prevenir fallades per \textit{Out-Of-Memory}) \\
+        Recursos \textit{Workers} (Systemd - proves) & 2 vCPUs, 2~GB RAM, 20~GB d'emmagatzematge NVMe/SATA \\
+        Recursos \textit{Workers} (Definitiu) & 2 vCPUs, 4~GB RAM, 35~GB d'emmagatzematge NVMe/SATA \\
         Versions de programari & Podman (v4.9.3), Systemd (v255), K3s (v1.35.4+k3s1), Ansible (v2.17.14), Go (v1.25.9) \\
-        Xarxa i connectivitat & Gestió via \textit{Netplan} (DHCP), interfície \texttt{ens33}, CNI Flannel (\texttt{10.42.1.0/24}) \\ \hline
-        Velocitat de l'enllaç de xarxa & 1~Gbps (Adaptador virtualitzat per VMware) \\
+        Xarxa i connectivitat & Gestió via \textit{Netplan} (DHCP), interfície \texttt{ens33}, CNI Flannel (\texttt{10.42.1.0/24}) \\
+        Velocitat de l'enllaç de xarxa & 1~Gbps (Adaptador virtualitzat per VMware) \\ \hline
     \end{tabular}
     \caption{Característiques generals de l'entorn experimental.}
     \label{tab:testbed_general}
 \end{table}
 
-A causa de la petjada de memòria estructural associada al pla de control de Kubernetes, es van establir dues configuracions de maquinari en funció de l'arquitectura avaluada:
+A causa de la petjada de memòria estructural associada al pla de control de Kubernetes, es van establir dues configuracions de maquinari diferenciades en funció de la fase del projecte, tal com es detalla a la Taula~\ref{tab:testbed_general}:
 
 \begin{itemize}
-    \item \textbf{Fase nativa (Systemd + Podman):} Els nodes perimetrals es van configurar amb un perfil ajustat per emular un dispositiu \textit{Edge} restrictiu: \textbf{2 vCPUs}, \textbf{2~GB de RAM} i un volum d'emmagatzematge de \textbf{20~GB}. Aquest dimensionament permet avaluar l'operativitat de la pila nativa en condicions de recursos mínims.
-    \item \textbf{Fase distribuïda (K3s):} Per a l'entorn amb K3s, va caldre ampliar els recursos assignats a la màquina virtual fins a \textbf{4~GB de RAM} i \textbf{35~GB} de disc. Aquesta adaptació respon a un requisit pràctic: amb només 2~GB de memòria, la concurrència del pla de control i el connector de xarxa (Flannel) exhauria el marge disponible abans d'iniciar l'execució del model d'Intel·ligència Artificial, provocant aturades prematures per exhauriment de memòria (\textit{Out-Of-Memory}).
+    \item \textbf{Fase nativa preliminar (Systemd + Podman):} Durant les proves de viabilitat inicials, els nodes perimetrals es van configurar amb un perfil altament restrictiu de \textbf{2~vCPUs}, \textbf{2~GB de RAM} i \textbf{20~GB} d'emmagatzematge. Aquest dimensionament va permetre avaluar l'operativitat de la pila nativa en condicions de recursos mínims.
+    \item \textbf{Fase d'orquestració (K3s):} L'execució de la pila de K3s sobre l'entorn inicial de 2~GB de RAM va provocar fallades d'execució per esgotament de memòria (\textit{Out-Of-Memory}, OOM). Per aquest motiu, va caldre redimensionar els nodes a \textbf{2~vCPUs}, \textbf{4~GB de RAM} i \textbf{35~GB} d'emmagatzematge de disc.
 \end{itemize}
+
+Perquè la comparativa de rendiment sigui justa i utilitzi exactament el mateix maquinari, \textbf{tots els tests finals d'aquest estudi es van recollir utilitzant la configuració de 4~GB de RAM i 35~GB de disc, tant per a Systemd com per a K3s.}
 
 \section{Disseny Iteratiu i Selecció de Protocols}
 L'estudi es va estructurar en quatre etapes iteratives amb l'objectiu d'identificar prèviament la configuració de xarxa més eficient i impedir que la capa de comunicació actués com a coll d'ampolla durant l'avaluació comparativa:
