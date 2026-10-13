@@ -59,7 +59,7 @@ Tot i l'alta velocitat de gRPC, el seu motor intern basat en HTTP/2 afegeix un \
 \end{figure}
 
 \textbf{4. Matriu de Trade-off}  
-La decisió arquitectònica definitiva es visualitza a la matriu de \textit{Trade-off} (Figura \ref{fig:comparativa_protocols_tradeoff}), que encreua la capacitat de processament global amb la latència estructural. El quadrant superior esquerre (alta velocitat i mínima latència) és dominat absolutament per ZeroMQ.
+La decisió arquitectònica s'il·lustra a la matriu de compensació (\textit{Trade-off}, Figura \ref{fig:comparativa_protocols_tradeoff}), que relaciona la capacitat de processament global amb la latència estructural. En analitzar el gràfic, s'observa que el quadrant superior esquerre (alta velocitat i mínima latència) correspon a les configuracions que utilitzen ZeroMQ.
 
 \begin{figure}[H]
     \centering
@@ -68,12 +68,12 @@ La decisió arquitectònica definitiva es visualitza a la matriu de \textit{Trad
     \label{fig:comparativa_protocols_tradeoff}
 \end{figure}
 
-Dins d'aquest quadrant líder, \textbf{ZeroMQ combinat amb MessagePack} es consolida com l'arquitectura guanyadora. Tot i presentar un rendiment marginalment inferior a Protobuf (9.054 vers 9.093 img/s), MessagePack aporta un format \textit{schema-less} que s'integra nativament amb estructures de Python. Això elimina la complexitat de precompilar contractes estrictes (\texttt{.proto}), estabilitzant el pic de memòria cau i maximitzant l'agilitat operativa per a fluxos MLOps. Aquesta combinació s'estableix com l'estàndard de transport definitiu per avaluar els orquestradors a la resta de l'estudi.
+Dins d'aquest grup d'alt rendiment, \textbf{ZeroMQ combinat amb MessagePack} es consolida com l'alternativa més favorable segons els paràmetres d'estudi. Tot i presentar un rendiment marginalment inferior a Protobuf (9.054 vers 9.093 img/s), MessagePack aporta un format \textit{schema-less} que s'integra nativament amb estructures de Python. Això elimina la complexitat de precompilar contractes estrictes (\texttt{.proto}), estabilitzant el pic de memòria cau i maximitzant l'agilitat operativa per a fluxos MLOps. Aquesta combinació s'estableix com el protocol de transport de referència per avaluar les arquitectures a la resta de l'estudi.
 
 \section{Rendiment del Model d'IA (CNN)}
 \label{sec:rendiment_ia}
 
-Per garantir que la infraestructura se sotmet a una càrrega d'inferència realista abans de comparar els orquestradors, és imprescindible certificar la viabilitat operativa i la integritat de les dades en el sistema distribuït. S'ha validat l'entrenament del model utilitzant el protocol guanyador (ZeroMQ amb MessagePack), demostrant que la partició del \textit{dataset} i la transmissió de tensors es realitza sense corrompre el \textit{payload}.
+Per garantir que la infraestructura se sotmet a una càrrega d'inferència realista abans de comparar els orquestradors, és imprescindible verificar la viabilitat operativa i la integritat de les dades en el sistema distribuït. S'ha fet l'entrenament del model utilitzant el protocol triat (ZeroMQ amb MessagePack), demostrant que la partició del \textit{dataset} i la transmissió de tensors es realitza sense corrompre el \textit{payload}.
 
 L'anàlisi de les mètriques visuals extretes durant la fase d'entrenament (\textit{Offline}) confirma el comportament esperat de la Xarxa Neuronal Convolucional (CNN):
 
@@ -82,7 +82,7 @@ L'anàlisi de les mètriques visuals extretes durant la fase d'entrenament (\tex
     \begin{figure}[H]
         \centering
         \includegraphics[width=0.9\textwidth]{sources/loss-curve.png}
-        \caption{Avaluació del model fundacional: Corba de pèrdua (\textit{Train Loss}).}
+        \caption{Avaluació del model CNN: Corba de pèrdua (\textit{Train Loss}).}
         \label{fig:loss_curve}
     \end{figure}
     Com s'observa a la Figura \ref{fig:loss_curve}, l'error d'entrenament experimenta una caiguda dràstica i s'estabilitza abans de finalitzar la primera iteració completa del \textit{dataset}. Això justifica empíricament la decisió d'entrenar durant una única època (1 Epoch), evitant un consum innecessari de temps al node Mestre.
@@ -91,7 +91,7 @@ L'anàlisi de les mètriques visuals extretes durant la fase d'entrenament (\tex
     \begin{figure}[H]
         \centering
         \includegraphics[width=0.8\textwidth]{sources/matriz-confusion.png}
-        \caption{Avaluació del model fundacional: Matriu de confusió en validació.}
+        \caption{Avaluació del model CNN: Matriu de confusió en validació.}
         \label{fig:confusion_matrix}
     \end{figure}
 
@@ -101,13 +101,13 @@ L'anàlisi de les mètriques visuals extretes durant la fase d'entrenament (\tex
     \begin{figure}[H]
         \centering
         \includegraphics[width=1\textwidth]{sources/ejemplos-predicciones-msgpack.png}
-        \caption{Exemples d'inferència del model fundacional: predicció i valor real al node Worker.}
+        \caption{Exemples d'inferència del model d'IA: predicció i valor real al node Worker.}
         \label{fig:ejemplos_inferencia}
     \end{figure}
     Les mostres aleatòries capturades directament des del \textit{Worker} (Figura \ref{fig:ejemplos_inferencia}) verifiquen que la serialització dinàmica amb \texttt{msgpack} reconstrueix la imatge perfecta a l'altre extrem de la xarxa, obtenint inferències lògiques i correctes.
 \end{itemize}
 
-Amb la fiabilitat algorítmica garantida, el model actua com una eina d'estrès realista per començar la comparativa definitiva d'infraestructures.
+Havent demostrat la validesa del model d'IA, aquest actua com una càrrega d'estrès realista que serveix de base per a l'avaluació principal d'infraestructures.
 
 \section{Comparativa Arquitectònica a l'Edge: Systemd vs Kubernetes (K3s)}
 \label{sec:comparativa_arquitectonica}
@@ -151,7 +151,7 @@ L'arquitectura basada en Systemd presenta un consum mitjà en repòs de \textbf{
 Mentre que Systemd executa els contenidors de forma nativa interactuant directament amb el \textit{kernel}, K3s requereix mantenir actius múltiples dimonis en segon pla per sostenir l'estat del clúster (\textit{kubelet}, pla de control API, \textit{containerd} i el controlador de xarxa \textit{flannel}). En dispositius perimetrals amb recursos escassos, aquesta reserva permanent de memòria redueix significativament el marge disponible per al processament de càrregues d'Intel·ligència Artificial (\textit{Compute Bound}).
 
 \subsection{Enginyeria del Caos i Resiliència (MTTR)}
-Per avaluar la capacitat d'auto-recuperació davant de fallades crítiques, es va aplicar un protocol d'\textit{Enginyeria del Caos}, eliminant abruptament els contenidors (\texttt{kill -9} en Systemd i \texttt{delete pod --force} en K3s) i mesurant el Temps Mitjà de Recuperació (MTTR).
+Per avaluar la capacitat d'auto-recuperació davant de fallades crítiques, es va aplicar un protocol d'\textit{Enginyeria del Caos}, provocant l'eliminació abrupta de la unitat d'execució (\texttt{podman kill} en Systemd i \texttt{kubectl delete pod --force} en K3s) i mesurant el Temps Mitjà de Recuperació (MTTR).
 
 \begin{figure}[H]
     \centering
@@ -208,6 +208,6 @@ No obstant això, la decisió arquitectònica ha de considerar la complexitat de
 
 En conclusió: 
 \begin{itemize}
-    \item \textbf{Systemd es posiciona com la solució òptima per a nodes Edge aïllats (\textit{Standalone}) amb recursos ultra-limitats}, on el rendiment i la latència són crítics.
+    \item \textbf{Systemd es posiciona com l'opció més eficient entre les avaluades per a nodes Edge aïllats (\textit{Standalone}) amb recursos altament restringits}, on el rendiment i la latència són crítics.
     \item \textbf{Kubernetes justifica el seu Impost Arquitectònic en escenaris on prima la reducció de la complexitat de gestió operativa}, permetent desplegaments dinàmics, tolerància a fallades a nivell de xarxa i actualitzacions declaratives (\textit{Zero-Touch}) sobre grans flotes de dispositius distribuïts.
 \end{itemize}

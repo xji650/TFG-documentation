@@ -27,7 +27,7 @@ Tot i el rigor metodològic aplicat mitjançant el registre automatitzat (Data L
 \begin{itemize}
     \item \textbf{Homogeneïtat del Maquinari:} Les proves s'han executat en màquines virtuals basades en arquitectura x86\_64 (Ubuntu). No s'ha validat l'impacte tèrmic ni els colls d'ampolla específics en arquitectures ARM pures altament restringides (ex. Raspberry Pi).
     \item \textbf{Topologia de Xarxa Ideal:} L'entorn opera sota una xarxa local d'alta disponibilitat (LAN). A l'Edge real (p. ex. xarxes 4G/5G industrials), factors com la pèrdua de paquets o el \textit{jitter} extrem podrien alterar la fiabilitat de ZeroMQ.
-    \item \textbf{Complexitat del Model d'IA:} La CNN utilitzada (MNIST) és un model fundacional lleuger. El pes dels pesos neuronals i el consum de memòria ramificarien exponencialment si s'utilitzessin models de Llenguatge Gran (LLMs) o xarxes de detecció d'objectes complexes.
+    \item \textbf{Complexitat del Model d'IA:} La CNN utilitzada (MNIST) és un model d'IA lleuger. La mida dels paràmetres i el consum de memòria es dispararien exponencialment si s'utilitzessin Grans Models de Llenguatge (LLM) o xarxes de detecció d'objectes complexes.
 \end{itemize}
 
 \section{Línies de Treball Futur}

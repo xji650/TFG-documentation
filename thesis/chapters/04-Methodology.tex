@@ -53,7 +53,7 @@ L'estudi es va estructurar en quatre etapes iteratives amb l'objectiu d'identifi
         \item \textit{Eficiència en MessagePack:} Aquest mecanisme permet empaquetar directament el flux binari sense processament intermedi (\textit{bin type}) a partir de les estructures de memòria, minimitzant l'ús de processador i mantenint una transmissió compacta.
     \end{itemize}
     \item \textbf{Fase 3: Validació del protocol sobre l'orquestrador:} El comportament observat amb ZeroMQ i MessagePack es va reproduir sobre el clúster de Kubernetes, verificant que el patró d'eficiència es mantenia constant independentment de la plataforma subjacent. Com a distribució distribuïda, es va optar per K3s pel seu disseny orientat específicament a plataformes \textit{Edge}.
-    \item \textbf{Fase 4: Comparativa arquitectònica final:} Amb el canal de comunicació fixat en ZeroMQ-MessagePack per descartar limitacions de xarxa, es van executar les proves d'estrès definitives per contraposar directament l'arquitectura nativa (Systemd) amb la solució distribuïda (K3s).
+    \item \textbf{Fase 4: Comparativa arquitectònica seleccionada:} Amb el canal de comunicació fixat en ZeroMQ-MessagePack per descartar limitacions de xarxa, es van executar les proves d'estrès de referència per contraposar directament l'arquitectura nativa (Systemd) amb l'entorn distribuït (K3s).
 \end{itemize}
 
 \section{Selecció del Model d'IA}
