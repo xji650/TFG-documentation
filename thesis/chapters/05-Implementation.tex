@@ -107,7 +107,7 @@ El procés està governat pels següents components d'automatització:
 \begin{itemize}
     \item \texttt{\textbf{playbook.yml}}: Activa el \textit{Linger}, desplega la xarxa, distribueix l'artefacte \texttt{.tar}, instància el Quadlet i habilita el \texttt{worker.service}.
     \item \texttt{\textbf{clean.yml}}: Executa una purga agressiva aturant els serveis i forçant l'esborrat de xarxes internes per evitar interferències entre proves.
-    \item \texttt{\textbf{generate\_benchmarks.sh}}: Orquestra el cicle d'avaluació executant el desplegament, capturant el consum base de RAM/CPU, aplicant Enginyeria del Caos (\texttt{podman kill}) per mesurar el MTTR i, finalment, llançant la simulació d'inferència per consolidar les mètriques en un \textit{Data Lake} CSV.
+    \item \texttt{\textbf{generate\_benchmarks.sh}}: Orquestra el cicle d'avaluació executant el desplegament, capturant el consum base de RAM/CPU, aplicant Enginyeria del Caos (mitjançant \texttt{podman kill} o \texttt{kubectl delete pod}) per mesurar el MTTR i, finalment, llançant la simulació d'inferència per consolidar les mètriques en un \textit{Data Lake} CSV.
 \end{itemize}
 
 
@@ -186,7 +186,7 @@ El flux d'execució i l'enrutament s'estructuren de la següent manera:
 
 
 \section{Automatització del \textit{Pipeline} i \textit{Data Lake}}
-L'avaluació es fonamenta en una jerarquia de tres \textit{scripts} de Bash que actuen com a fil d'execució continu per evitar qualsevol biaix manual. En el nivell superior, un \textbf{orquestrador mestre híbrida} governa el cicle de vida global de l'experiment. La seva funció principal és gestionar la transició entre plataformes i garantir la integritat del maquinari, forçant reinicis físics (\texttt{sudo reboot}) als nodes perimetrals i aplicant pauses de refredament de 120 segons per evitar la degradació del rendiment per sobreescalfament (\textit{Thermal Throttling}).
+L'avaluació es fonamenta en una jerarquia de tres \textit{scripts} de Bash que actuen de manera ininterrompuda per evitar qualsevol biaix manual. En el nivell superior, un \textbf{orquestrador mestre híbrid} governa el cicle de vida global de l'experiment. La seva funció principal és gestionar la transició entre plataformes i garantir la integritat de les condicions inicials, forçant \textbf{reinicis de les màquines virtuals} (\texttt{sudo reboot}) als nodes perimetrals i aplicant pauses de refredament de 120 segons per aconseguir un \textbf{entorn experimental estabilitzat} i evitar la degradació del rendiment per estrangulament tèrmic (\textit{Thermal Throttling}).
 
 \begin{figure}[H]
     \centering
@@ -195,7 +195,7 @@ L'avaluació es fonamenta en una jerarquia de tres \textit{scripts} de Bash que 
     \label{fig:flow-pipeline}
 \end{figure}
 
-Un cop l'entorn físic està estabilitzat, aquest orquestrador mestre invoca els \textit{scripts} específics d'avaluació (un dissenyat exclusivament per a Systemd i un altre per a K3s). Aquests sub-orquestradors iteren seqüencialment sobre els protocols executant les següents fases:
+Un cop l'entorn experimental està estabilitzat, aquest orquestrador mestre invoca els \textit{scripts} específics d'avaluació (un dissenyat exclusivament per a Systemd i un altre per a K3s). Aquests sub-orquestradors iteren seqüencialment sobre els protocols executant les següents fases:
 
 \begin{itemize}
     \item \textbf{Inicialització i Estabilització:} S'executa una neteja total de l'entorn previ i es desplega la infraestructura des de zero. S'apliquen pauses d'estabilització (de 15 segons en K3s) per permetre que els processos en segon pla com el \textit{metrics-server} s'assentin i recullin dades fiables del consum base.
@@ -230,8 +230,23 @@ with open(csv_file, 'a', encoding='utf-8') as f:
 \end{lstlisting}
 
 \section{Decisions Tècniques i Resolució de Problemes}
-La mesura de precisió de l'MTTR va requerir desenvolupar solucions específiques per a cada tecnologia. En l'enfocament natiu, la fallada se simula amb \texttt{podman kill} i la recuperació es detecta amb bucles \texttt{while} de 0,05 segons interrogant l'estat local de \texttt{systemctl}. En contrast, a l'entorn distribuït s'ha de forçar la terminació del procés (\texttt{kubectl delete pod --force --grace-period=0}) i esperar que el controlador (\textit{DaemonSet}) instanciï el nou \textit{Pod}, monitoritzant la transició fins a l'estat \textit{Ready}.  
+La mesura de precisió de l'MTTR va requerir desenvolupar solucions específiques per a cada tecnologia. En l'enfocament natiu, la fallada se simula amb \texttt{podman kill} i la recuperació es detecta amb bucles \texttt{while} de 0,05 segons interrogant l'estat local de \texttt{systemctl}. En contrast, a l'entorn distribuït s'ha de forçar l'eliminació del recurs a l'API (\texttt{kubectl delete pod --force --grace-period=0}) i esperar que el controlador (\textit{DaemonSet}) instanciï el nou \textit{Pod}, monitoritzant la transició fins a l'estat \textit{Ready}.
 
-Durant la fase d'enginyeria del caos en l'entorn amb Kubernetes, es va documentar una incidència crítica en la infraestructura. Concretament, en una de les execucions es va produir un valor atípic (\textit{outlier}) de 261 segons ($261.450$~ms) causat per un bloqueig (\textit{lock}) temporal en l'alliberament de la IP virtual per part del connector de xarxa Flannel. 
+\subsection{Resolució de condicions de carrera (\textit{Race Conditions}) en la captura de mètriques}
+Durant les primeres fases d'experimentació en el clúster de K3s, es va detectar una anomalia en la mesura del temps mitjà de recuperació (MTTR). A causa de l'ús de l'ordre de destrucció immediata \texttt{kubectl delete pod --force --grace-period=0}, la base de dades del clúster (API) eliminava el registre del \textit{Pod} de forma instantània. Això provocava una condició de carrera (\textit{race condition}) entre la mort física del contenidor antic en el node i la instanciació del nou \textit{Pod} per part del controlador (\textit{DaemonSet}). Com a conseqüència, l'\textit{script} automatitzat original capturava el diagnòstic de salut (\textit{Ready}) del \textit{Pod} moribund abans que aquest desaparegués realment del node, registrant temps de recuperació falsament curts de pocs mil·lisegons.
+
+Per solucionar aquesta deficiència i garantir la validesa de les mètriques, es va redissenyar l'arquitectura de l'\textit{script} de control implementant una estratègia basada en la infraestructura fixa:
+
+\begin{itemize}
+    \item \textbf{Iteració sobre Nodes Físics:} En lloc de fer el seguiment de \textit{Pods} amb identificadors temporals i efímers (els quals queden descatalogats després de la fallada), el bucle de monitoratge itera de forma estàtica sobre els nodes físics de l'entorn (\texttt{node-a} i \texttt{node-b}).
+    \item \textbf{Validació Dinàmica d'Identificadors:} L'\textit{script} realitza consultes en temps real a l'API de K3s per extreure el nom del \textit{Pod} allotjat en el node objectiu. El cronòmetre de recuperació no s'atura fins que es compleix una doble condició estricta: que l'estat del \textit{Pod} sigui operatiu (\textit{Ready}) i que el seu identificador únic hagi canviat completament respecte al \textit{Pod} en execució abans de la prova de caos (\texttt{\$NEW\_POD != \$POD\_NAME}).
+\end{itemize}
+
+Aquest canvi de disseny metodològic elimina qualsevol interferència provocada per l'asincronia del clúster, assegurant que els temps reflectits en els resultats d'aquest treball corresponen al cicle complet i real de provisió de la nova unitat d'execució.
+
+% NOVA SUBSECCIÓ PER SEPARAR CONCEPTES
+\subsection{Tractament Metodològic de Fallades Estructurals (Flannel)}
+
+Durant la fase d'enginyeria del caos en l'entorn amb Kubernetes, es va documentar una incidència crítica en la infraestructura. Concretament, en una de les execucions es va produir un valor atípic (\textit{outlier}) de 261 segons (261.450~ms) causat per un bloqueig (\textit{lock}) temporal en l'alliberament de la IP virtual per part del connector de xarxa Flannel. 
 
 D'acord amb les indicacions metodològiques, per facilitar la comparació del comportament habitual entre ambdós sistemes, a la secció de resultats es presentaran les mètriques estadístiques de referència (mitjana, mediana, desviació estàndard, mínim i màxim) basades exclusivament en les execucions normals, ometent aquesta dada extrema. Tanmateix, aquest esdeveniment es conserva al registre i s'analitza a fons, ja que no es tracta d'un error de mesura, sinó que evidencia un mode de fallada real i crític del sistema, propi de la complexitat estructural de les xarxes definides per programari (SDN) en entorns distribuïts.
