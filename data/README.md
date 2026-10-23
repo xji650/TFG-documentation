@@ -1,7 +1,7 @@
 # data/
 
-The project uses the official [MNIST dataset from TensorFlow Datasets](https://www.tensorflow.org/datasets/catalog/mnist).
+El projecte utilitza dataset oficial MNIST del [TensorFlow Dataset](https://www.tensorflow.org/datasets/catalog/mnist).
 
-There is no need to download anything manually.
+No cal descarregar res manualment.
 
-The `master.py` script from the evaluation suite handles connecting to the network, downloading the dataset to the *master* node, and distributing it to the *workers* at runtime.
+El script `master.py` del paquet d'avaluació gestiona la connexió a la xarxa, la descàrrega del conjunt de dades al node *master* i la seva distribució als *workers* en temps d'execució.
