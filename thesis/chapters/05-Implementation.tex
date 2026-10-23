@@ -127,7 +127,7 @@ Aquesta secció detalla l'adaptació de l'entorn cap a un model declaratiu i cen
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=1\textwidth]{sources/k3s-architecture.png}
-    \caption{Arquitectura de l'entorn nativa amb Kubernetes.}
+    \caption{Arquitectura de l'entorn distribuïda amb Kubernetes (K3s).}
     \label{fig:arquitectura_kubernetes}
 \end{figure}
 
@@ -143,7 +143,7 @@ L'arquitectura manté l'enfocament modular i dinàmic (\texttt{-e "experimento\_
 
 \textbf{Seguretat i Inventari}
 
-Igual que a l'entorn natiu, la topologia es defineix a l'\texttt{inventory.ini} separant el grup \texttt{[master]} (execució local per optimitzar la compilació) del grup \texttt{[workers]}. La seguretat es gestiona mitjançant credencials aïllades a \texttt{group\_vars/workers.yml} per facilitar un \textit{Zero-Touch Provisioning}. Els serveis s'exposen a través d'un \textit{Service} tipus \textit{NodePort} pel port 8000.
+Igual que a l'entorn natiu, la topologia es defineix a l'\texttt{inventory.ini} separant el grup \texttt{[master]} (execució local per optimitzar la compilació) del grup \texttt{[workers]}. La seguretat es gestiona mitjançant credencials aïllades a \texttt{group\_vars/workers.yml} per facilitar un \textit{Zero-Touch Provisioning}. Els serveis es configuren internament pel port 8000 i s'exposen a l'exterior a través d'un \textit{Service} tipus \textit{NodePort}.
 
 \textbf{Documentació d'Execució i Benchmarking}
 
@@ -181,7 +181,7 @@ El flux d'execució i l'enrutament s'estructuren de la següent manera:
     
     \item \textbf{Inferència i Còpia Zero (\textit{Zero-Copy}):} En rebre la petició d'inferència, el \textit{Worker} recupera el tensor mitjançant la clau del diccionari i aplica tècniques de còpia zero (\texttt{np.frombuffer}). Això permet assignar el bloc de memòria directament a la Xarxa Neuronal Convolucional (CNN), invertint tot l'esforç de la CPU en el càlcul matemàtic (\texttt{torch.no\_grad()}) sense duplicar les dades a la RAM.
     
-    \item \textbf{Enrutament segons l'Arquitectura:} En l'entorn natiu (Systemd), el diccionari MessagePack s'envia directament al port local del contenidor. En l'entorn distribuït (K3s), el mestre injecta els paquets a través d'un servei \textit{NodePort} exposat al port 30000, delegant a l'orquestrador l'enrutament intern cap al \textit{socket} del \textit{Pod} corresponent.
+    \item \textbf{Enrutament segons l'Arquitectura:} En l'entorn natiu (Systemd), el diccionari MessagePack s'envia directament al port local del contenidor. En l'entorn distribuït (K3s), el mestre injecta els paquets a través d'un servei \textit{NodePort} exposat externament al port 30000 (dins del rang per defecte de Kubernetes), delegant a l'orquestrador l'enrutament intern cap al port del servei (8000) i el \textit{socket} del \textit{Pod} corresponent.
 \end{itemize}
 
 
