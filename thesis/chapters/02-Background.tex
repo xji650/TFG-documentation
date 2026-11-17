@@ -7,7 +7,17 @@ Aquest apartat estableix la base teòrica necessària per comprendre l'evolució
 Els contenidors formen una tecnologia de virtualització a nivell de sistema operatiu que permet empaquetar una aplicació i totes les seves dependències dins d'una unitat estandarditzada. A diferència de les màquines virtuals, els contenidors comparteixen el nucli (\textit{kernel}) del sistema amfitrió, fet que els dota d'una lleugeresa notable, d'un inici ràpid i d'una gran eficiència en l'ús de CPU i memòria.
 
 \textbf{Arquitectures amb dimoni i sense dimoni (\textit{Daemonless}):}
-Tradicionalment, motors com Docker s'han basat en un dimoni (\textit{daemon}), un procés central en segon pla —generalment executat amb privilegis d'administrador— que gestiona tot el cicle de vida dels contenidors. Si aquest dimoni falla, s'atura la totalitat del sistema. Com a evolució tecnològica, sorgeix Podman, un motor de contenidors sense dimoni que interactua directament amb el nucli mitjançant processos independents \cite{podman_pod}, millorant així la seguretat, reduint el consum en repòs i integrant-se de manera natural amb el sistema operatiu.
+Tradicionalment, motors com Docker s'han basat en un dimoni (\textit{daemon}), un procés central en segon pla —generalment executat amb privilegis d'administrador— que gestiona tot el cicle de vida dels contenidors. Si aquest dimoni falla, es pot veure afectada la gestió dels contenidors i, segons la configuració, també la seva execució. 
+Tanmateix, Docker disposa d’opcions com live-restore que permeten mantenir els contenidors en funcionament mentre el dimoni no està disponible. 
+
+Com a alternativa, Podman adopta una arquitectura sense un dimoni central persistent, en què les ordres s’executen mitjançant processos independents i la gestió dels contenidors es recolza en components auxiliars i un runtime OCI [1]. Aquest model evita la dependència d’un dimoni central i, especialment quan s’executa en mode rootless, redueix la necessitat de privilegis d’administrador i facilita la integració amb el sistema operatiu.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.75\textwidth]{sources/esquema-arquitectura.png}
+    \caption{Comparació conceptual entre l'arquitectura amb dimoni de Docker i l'arquitectura sense dimoni central persistent de Podman. Elaboració pròpia a partir de la documentació oficial de Docker i Podman.}
+    \label{fig:arquitectures_podman_docker}
+\end{figure}
 
 \section{L'Evolució de l'Orquestració i el biaix a l'\textit{Edge}}
 L'orquestració s'encarrega d'automatitzar el desplegament, l'escalabilitat i la resiliència de múltiples contenidors. Històricament, l'evolució d'aquests sistemes a la indústria ha passat per tres fases clarament diferenciades:  
@@ -55,7 +65,7 @@ La informació s'estructura habitualment sota dos enfocaments. D'una banda, els 
     \item \textbf{ZeroMQ:} Més enllà d'un protocol rígid, es tracta d'una llibreria de missatgeria d'alt rendiment i sense intermediaris (\textit{brokerless}). Permet la comunicació asíncrona directa de memòria a memòria, essent una de les alternatives més ràpides per gestionar un volum elevat de missatges per segon en xarxes locals.
 \end{itemize}
 
-\section{Càrregues de treball exigents: La necessitat d'optimitzar per a la IA}
+\section{Exigències computacionals de les càrregues de treball d’intel·ligència artificial}
 L'aplicació pràctica d'aquestes optimitzacions es materialitza en l'execució de models d'Intel·ligència Artificial als extrems de la xarxa. Els algorismes d'\textit{Deep Learning} requereixen allotjar estructures de dades complexes (tensors) a la memòria RAM durant tot el procés d'inferència o entrenament. Qualsevol penalització estructural de la infraestructura (com el sobrecost d'un orquestrador) sostreu recursos de còmput crítics directament al model d'IA, degradant-ne el rendiment global.
 
 Per quantificar empíricament aquest impacte, s'utilitza com a referència el conjunt de dades MNIST, un estàndard clàssic de reconeixement de dígits manuscrits que permet enviar un flux constant de dades estructurades als contenidors objecte d'estudi \cite{tensorflow_mnist}.
@@ -73,7 +83,7 @@ Finalment, l'arquitectura de la xarxa neuronal determina el grau d'exigència co
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.85\textwidth]{sources/mlp_cnn_architecture.png}
-    \caption{Arquitectura comparativa de xarxes MLP i CNN dissenyades per a tasques de classificació i regressió. Font: Adaptada de \cite{xiang2019robust}.}
+    \caption{Arquitectura comparativa de xarxes MLP i CNN dissenyades per a tasques de classificació i regressió. Font: Adaptada de Xiang et al. \cite{xiang2019robust}.}
     \label{fig:arquitectura_mlp_cnn}
 \end{figure}
 
