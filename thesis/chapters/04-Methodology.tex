@@ -14,8 +14,8 @@ Per contextualitzar adequadament l'avaluació en maquinari de capacitats reduïd
 
 \begin{table}[htbp]
     \centering
-    \renewcommand{\arraystretch}{1.4}
-    \begin{tabular}{l p{10cm}}
+    \renewcommand{\arraystretch}{1.7}
+    \begin{tabular}{p{5cm} p{10cm}}
         \hline
         \textbf{Component / Paràmetre} & \textbf{Especificació tècnica} \\ \hline
         Arquitectura base (amfitrió) & Intel Core i9-14900HX (x86\_64) \\
@@ -23,8 +23,8 @@ Per contextualitzar adequadament l'avaluació en maquinari de capacitats reduïd
         S.O. i nucli (Mestre) & Ubuntu 22.04.5 LTS -- Linux Kernel 6.18.x (Microsoft Standard) \\
         S.O. i nucli (\textit{Workers}) & Ubuntu 24.04.4 LTS (mode \textit{headless}) -- Linux Kernel 6.8.0-138-generic \\
         Recursos Node Mestre & 32 vCPUs, 16~GB RAM, 1~TB d'emmagatzematge \\
-        Recursos \textit{Workers} (Systemd – proves preliminars) & 2 vCPUs, 2~GB RAM, 20~GB d'emmagatzematge NVMe/SATA \\
-        Recursos \textit{Workers} (Configuració final comuna (Systemd i K3s)) & 2 vCPUs, 4~GB RAM, 35~GB d'emmagatzematge NVMe/SATA \\
+        Recursos \textit{Workers} \newline (Systemd – proves preliminars) & 2 vCPUs, 2~GB RAM, 20~GB d'emmagatzematge ~NVMe/SATA \\
+        Recursos \textit{Workers} \newline (Config. final (Systemd i K3s)) & 2 vCPUs, 4~GB RAM, 35~GB d'emmagatzematge ~NVMe/SATA \\
         Versions de programari & Podman (v4.9.3), Systemd (v255), K3s (v1.35.4+k3s1), Ansible (v2.17.14), Go (v1.25.9) \\
         Xarxa i connectivitat & Gestió via \textit{Netplan} (DHCP), interfície \texttt{ens33}, CNI Flannel (\texttt{10.42.1.0/24}) \\
         Velocitat de l'enllaç de xarxa & 1~Gbps (Adaptador virtualitzat per VMware) \\ \hline
@@ -51,7 +51,7 @@ L'estudi es va estructurar en quatre etapes iteratives amb l'objectiu d'identifi
         \item \textit{Sobrecàrrega en Protobuf:} Definir la matriu de la imatge mitjançant el camp \texttt{repeated int32} en el fitxer \texttt{.proto} incrementa la mida del missatge de 784 bytes a més de 2~KB, provocant un consum excessiu de CPU durant els cicles de codificació i descodificació píxel a píxel. Encara que recórrer al tipus \texttt{bytes} esmorteïa aquesta penalització, eliminava l'avantatge del tipat estricte propi de la solució.
         \item \textit{Eficiència en MessagePack:} Aquest mecanisme permet empaquetar directament el flux binari sense processament intermedi (\textit{bin type}) a partir de les estructures de memòria, minimitzant l'ús de processador i mantenint una transmissió compacta.
     \end{itemize}
-    \item \textbf{Fase 3: Validació del protocol sobre l'orquestrador:} El comportament observat amb ZeroMQ i MessagePack es va reproduir sobre el clúster de Kubernetes, verificant que el patró d'eficiència es mantenia constant independentment de la plataforma subjacent. Com a distribució lleugera de Kubernetes, orientada a entorns Edge, es va optar per \textbf{K3s}. En la configuració emprada, es va mantenir \textbf{Flannel} com a connector de xarxa (CNI) predeterminat, amb VXLAN com a backend per a l’encapsulament del trànsit dels Pods entre nodes.
+    \item \textbf{Fase 3: Validació del protocol sobre l'orquestrador:} El comportament observat amb ZeroMQ i MessagePack es va reproduir sobre el clúster de Kubernetes, verificant que el patró d'eficiència es mantenia constant independentment de la plataforma subjacent. Com a distribució lleugera de Kubernetes, orientada a entorns \textit{Edge}, es va optar per \textbf{K3s}. En la configuració emprada, es va mantenir \textbf{Flannel} com a connector de xarxa (CNI) predeterminat, amb VXLAN com a backend per a l’encapsulament del trànsit dels Pods entre nodes.
     \item \textbf{Fase 4: Comparativa arquitectònica final:} Amb el canal de comunicació fixat en \textbf{ZeroMQ-MessagePack} per mantenir constants el mecanisme de comunicació i el format de serialització, es van executar les proves d’estrès de referència per comparar directament l’arquitectura nativa basada en Systemd i Podman amb l’entorn distribuït basat en K3s.
 \end{itemize}
 
