@@ -67,7 +67,7 @@ Per a l'avaluació del sistema, l'entrenament de la CNN es va configurar deliber
 
 
 \section{Infraestructura com a Codi: Arquitectura Nativa (Systemd)}
-Aquesta secció detalla la Infraestructura com a Codi (IaC) basada en Ansible per a l'aprovisionament automatitzat i la gestió del cicle de vida dels nodes (Mestre i \textit{Workers}) en l'entorn de processament perimetral natiu.
+Aquesta secció detalla la Infraestructura com a Codi (IaC) basada en Ansible per a l'aprovisionament automatitzat i la gestió del cicle de vida dels nodes (\textit{Master} i \textit{Workers}) en l'entorn de processament perimetral natiu.
 
 \textbf{Arquitectura i Implementació Tècnica}
 
@@ -175,11 +175,11 @@ Aquesta implementació elimina la necessitat de precompilar contractes estrictes
 El flux d'execució i l'enrutament s'estructuren de la següent manera:
 
 \begin{itemize}
-    \item \textbf{Orquestració i Estructuració Dinàmica (Node Mestre):} El mestre assumeix el control total de l'entrenament (\textit{Offline}) i la injecció de dades. En lloc d'instanciar classes precompilades, empaqueta els bytes del model (\texttt{.pth}) i els tensors d'imatges directament en un diccionari estàndard (\texttt{\{'model\_data': model\_bytes\}}). Aquesta estructura es serialitza dinàmicament a format binari utilitzant \texttt{msgpack.packb(..., use\_bin\_type=True)} i s'injecta a la xarxa mitjançant missatgeria multiparte.
+    \item \textbf{Orquestració i Estructuració Dinàmica (Node \textit{Master}):} El mestre assumeix el control total de l'entrenament (\textit{Offline}) i la injecció de dades. En lloc d'instanciar classes precompilades, empaqueta els bytes del model (\texttt{.pth}) i els tensors d'imatges directament en un diccionari estàndard (\texttt{\{'model\_data': model\_bytes\}}). Aquesta estructura es serialitza dinàmicament a format binari utilitzant \texttt{msgpack.packb(..., use\_bin\_type=True)} i s'injecta a la xarxa mitjançant missatgeria multiparte.
     
     \item \textbf{Gestió de Memòria i Seguretat (Nodes \textit{Workers}):} Atès que les llibreries de MessagePack imposen límits estrictes de memòria per prevenir atacs per esgotament (OOM), el servidor perimetral sobrescriu explícitament aquests límits (\texttt{max\_bin\_len=200*1024*1024}) per permetre la deserialització de tensors pesats propis de PyTorch.
     
-    \item \textbf{Inferència i Conversió de Dades:} En rebre la petició d'inferència, el Worker recupera el bloc binari mitjançant la clau corresponent del diccionari i el converteix en un array NumPy amb \texttt{np.frombuffer}, que crea una vista sobre el búfer original sense copiar-ne les dades. A continuació, se'n fa una còpia explícita per obtenir un array modificable. Posteriorment, \texttt{torch.tensor()} crea un tensor de PyTorch a partir d'aquest array, copiant-ne novament les dades i adaptant-ne les dimensions a les requerides per la Xarxa Neuronal Convolucional (CNN). La inferència s'executa mitjançant \texttt{torch.no\_grad()}, evitant el càlcul de gradients durant aquesta fase.
+    \item \textbf{Inferència i Conversió de Dades:} En rebre la petició d'inferència, el  \textit{Worker} recupera el bloc binari mitjançant la clau corresponent del diccionari i el converteix en un array NumPy amb \texttt{np.frombuffer}, que crea una vista sobre el búfer original sense copiar-ne les dades. A continuació, se'n fa una còpia explícita per obtenir un array modificable. Posteriorment, \texttt{torch.tensor()} crea un tensor de PyTorch a partir d'aquest array, copiant-ne novament les dades i adaptant-ne les dimensions a les requerides per la Xarxa Neuronal Convolucional (CNN). La inferència s'executa mitjançant \texttt{torch.no\_grad()}, evitant el càlcul de gradients durant aquesta fase.
     
     \item \textbf{Enrutament segons l'Arquitectura:} En l'entorn natiu (Systemd), el diccionari MessagePack s'envia directament al port local del contenidor. En l'entorn distribuït (K3s), el mestre injecta els paquets a través d'un servei \textit{NodePort} exposat externament al port 30000 (dins del rang per defecte de Kubernetes), delegant a l'orquestrador l'enrutament intern cap al port del servei (8000) i el \textit{socket} del \textit{Pod} corresponent.
 \end{itemize}
@@ -239,7 +239,7 @@ En l'enfocament natiu, la fallada es simula mitjançant \texttt{podman kill} i l
 En contrast, a l'entorn distribuït s'elimina forçosament el Pod mitjançant \texttt{kubectl delete pod --force --grace-period=0} i s'espera que el controlador \texttt{DaemonSet} creï un Pod substitut, monitoritzant la transició fins que el nou Pod assoleix la condició \texttt{Ready} a l'API de Kubernetes.
 
 Els criteris de recuperació són diferents: en l'entorn natiu, es considera recuperat el servei quan \texttt{worker.service} torna a estar \texttt{active}, mentre que en K3s s'espera que el Pod assoleixi la condició \texttt{Ready}. 
-Per tant, l'MTTR mesura el temps fins que cada plataforma recupera l'estat indicat pel seu propi gestor, però no necessàriament el temps fins que el Worker torna a processar inferències correctament.
+Per tant, l'MTTR mesura el temps fins que cada plataforma recupera l'estat indicat pel seu propi gestor, però no necessàriament el temps fins que el  \textit{Worker} torna a processar inferències correctament.
 
 Pel que fa a la freqüència de sondeig, el bucle de Systemd incorpora una pausa de 0,05 segons entre consultes, mentre que el de K3s incorpora una pausa de 0,1 segons entre iteracions. 
 Aquests intervals no representen el temps exacte entre consultes, ja que també cal tenir en compte l'execució de les ordres. Aquesta diferència pot influir en la precisió temporal de l'MTTR i s'ha de tenir present en interpretar els resultats.

@@ -85,7 +85,7 @@ L'anàlisi de les mètriques visuals extretes durant la fase d'entrenament (\tex
         \caption{Avaluació del model CNN: Corba de pèrdua (\textit{Train Loss}).}
         \label{fig:loss_curve}
     \end{figure}
-    Com s'observa a la Figura \ref{fig:loss_curve}, l'error d'entrenament experimenta una caiguda dràstica i s'estabilitza abans de finalitzar la primera iteració completa del \textit{dataset}. Això justifica empíricament la decisió d'entrenar durant una única època (1 Epoch), evitant un consum innecessari de temps al node Mestre.
+    Com s'observa a la Figura \ref{fig:loss_curve}, l'error d'entrenament experimenta una caiguda dràstica i s'estabilitza abans de finalitzar la primera iteració completa del \textit{dataset}. Això justifica empíricament la decisió d'entrenar durant una única època (1 Epoch), evitant un consum innecessari de temps al node \textit{Master}.
     
     \item \textbf{Precisió (Matriu de Confusió):} 
     \begin{figure}[H]
@@ -101,7 +101,7 @@ L'anàlisi de les mètriques visuals extretes durant la fase d'entrenament (\tex
     \begin{figure}[H]
         \centering
         \includegraphics[width=1\textwidth]{sources/ejemplos-predicciones-msgpack.png}
-        \caption{Exemples d'inferència del model d'IA: predicció i valor real al node Worker.}
+        \caption{Exemples d'inferència del model d'IA: predicció i valor real al node \textit{Worker}.}
         \label{fig:ejemplos_inferencia}
     \end{figure}
     Les mostres aleatòries capturades directament des del \textit{Worker} (Figura \ref{fig:ejemplos_inferencia}) verifiquen que la serialització dinàmica amb \texttt{msgpack} reconstrueix la imatge perfecta a l'altre extrem de la xarxa, obtenint inferències lògiques i correctes.

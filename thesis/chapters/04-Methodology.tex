@@ -19,10 +19,10 @@ Per contextualitzar adequadament l'avaluació en maquinari de capacitats reduïd
         \hline
         \textbf{Component / Paràmetre} & \textbf{Especificació tècnica} \\ \hline
         Arquitectura base (amfitrió) & Intel Core i9-14900HX (x86\_64) \\
-        Entorns de virtualització & WSL2 (Node Mestre) / VMware Workstation Player 17 (Nodes \textit{Workers}) \\
-        S.O. i nucli (Mestre) & Ubuntu 22.04.5 LTS -- Linux Kernel 6.18.x (Microsoft Standard) \\
+        Entorns de virtualització & WSL2 (Node \textit{Master}) / VMware Workstation Player 17 (Nodes \textit{Workers}) \\
+        S.O. i nucli (\textit{Master}) & Ubuntu 22.04.5 LTS -- Linux Kernel 6.18.x (Microsoft Standard) \\
         S.O. i nucli (\textit{Workers}) & Ubuntu 24.04.4 LTS (mode \textit{headless}) -- Linux Kernel 6.8.0-138-generic \\
-        Recursos Node Mestre & 32 vCPUs, 16~GB RAM, 1~TB d'emmagatzematge \\
+        Recursos Node \textit{Master} & 32 vCPUs, 16~GB RAM, 1~TB d'emmagatzematge \\
         Recursos \textit{Workers} \newline (Systemd – proves preliminars) & 2 vCPUs, 2~GB RAM, 20~GB d'emmagatzematge ~NVMe/SATA \\
         Recursos \textit{Workers} \newline (Config. final (Systemd i K3s)) & 2 vCPUs, 4~GB RAM, 35~GB d'emmagatzematge ~NVMe/SATA \\
         Versions de programari & Podman (v4.9.3), Systemd (v255), K3s (v1.35.4+k3s1), Ansible (v2.17.14), Go (v1.25.9) \\
@@ -63,7 +63,7 @@ L'arquitectura de la prova separa el node de gestió dels nodes d'execució (\te
 
 \begin{itemize}
     \item \textbf{Construcció centralitzada:} La generació i compilació dels binaris i imatges es centralitza al node mestre per no penalitzar la capacitat de càlcul dels nodes perimetrals.
-    \item \textbf{Distribució local:} Els artefactes resultants es transfereixen directament a l'emmagatzematge intern de cada \textit{worker} abans d'iniciar les mesures.
+    \item \textbf{Distribució local:} Els artefactes resultants es transfereixen directament a l'emmagatzematge intern de cada treballador abans d'iniciar les mesures.
     \item \textbf{Separació de responsabilitats:} Tant en Systemd com en K3s, l'execució de les tasques d'inferència queda confinada als nodes perimetrals, assegurant que el pla de gestió no interfereixi en els mesuraments de rendiment.
 \end{itemize}
 
