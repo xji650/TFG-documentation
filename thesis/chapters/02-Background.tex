@@ -8,9 +8,10 @@ Els contenidors formen una tecnologia de virtualització a nivell de sistema ope
 
 \textbf{Arquitectures amb dimoni i sense dimoni (\textit{Daemonless}):}
 Tradicionalment, motors com Docker s'han basat en un dimoni (\textit{daemon}), un procés central en segon pla —generalment executat amb privilegis d'administrador— que gestiona tot el cicle de vida dels contenidors. Si aquest dimoni falla, es pot veure afectada la gestió dels contenidors i, segons la configuració, també la seva execució. 
-Tanmateix, Docker disposa d’opcions com live-restore que permeten mantenir els contenidors en funcionament mentre el dimoni no està disponible. 
+Tanmateix, Docker disposa d'opcions com \texttt{live-restore} que permeten mantenir els contenidors en funcionament mentre el dimoni no està disponible. 
 
-Com a alternativa, Podman adopta una arquitectura sense un dimoni central persistent, en què les ordres s’executen mitjançant processos independents i la gestió dels contenidors es recolza en components auxiliars i un runtime OCI \cite{podman_pod} . Aquest model evita la dependència d’un dimoni central i, especialment quan s’executa en mode rootless, redueix la necessitat de privilegis d’administrador i facilita la integració amb el sistema operatiu.
+Com a alternativa, Podman adopta una arquitectura sense un dimoni central persistent, en què les ordres s’executen mitjançant processos independents i la gestió dels contenidors es recolza en components auxiliars i un \textit{runtime} OCI \cite{podman_pod}.
+Aquest model evita la dependència d’un dimoni central i, especialment quan s’executa en mode \textit{rootless}, redueix la necessitat de privilegis d’administrador i facilita la integració amb el sistema operatiu.
 
 \begin{figure}[H]
     \centering
