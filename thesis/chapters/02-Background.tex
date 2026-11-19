@@ -10,8 +10,8 @@ Els contenidors formen una tecnologia de virtualització a nivell de sistema ope
 Tradicionalment, motors com Docker s'han basat en un dimoni (\textit{daemon}), un procés central en segon pla —generalment executat amb privilegis d'administrador— que gestiona tot el cicle de vida dels contenidors. Si aquest dimoni falla, es pot veure afectada la gestió dels contenidors i, segons la configuració, també la seva execució. 
 Tanmateix, Docker disposa d'opcions com \texttt{live-restore} que permeten mantenir els contenidors en funcionament mentre el dimoni no està disponible. 
 
-Com a alternativa, Podman adopta una arquitectura sense un dimoni central persistent, en què les ordres s’executen mitjançant processos independents i la gestió dels contenidors es recolza en components auxiliars i un \textit{runtime} OCI \cite{podman_pod}.
-Aquest model evita la dependència d’un dimoni central i, especialment quan s’executa en mode \textit{rootless}, redueix la necessitat de privilegis d’administrador i facilita la integració amb el sistema operatiu.
+Com a alternativa, Podman adopta una arquitectura sense un dimoni central persistent, en què les ordres s'executen mitjançant processos independents i la gestió dels contenidors es recolza en components auxiliars i un \textit{runtime} OCI \cite{podman_pod}.
+Aquest model evita la dependència d'un dimoni central i, especialment quan s'executa en mode \textit{rootless}, redueix la necessitat de privilegis d'administrador i facilita la integració amb el sistema operatiu.
 
 \begin{figure}[H]
     \centering
@@ -73,7 +73,7 @@ La informació s'estructura habitualment sota dos enfocaments. D'una banda, els 
     \item \textbf{ZeroMQ:} Més enllà d'un protocol rígid, es tracta d'una llibreria de missatgeria d'alt rendiment i sense intermediaris (\textit{brokerless}). Permet la comunicació asíncrona directa de memòria a memòria, essent una de les alternatives més ràpides per gestionar un volum elevat de missatges per segon en xarxes locals.
 \end{itemize}
 
-\section{Exigències computacionals de les càrregues de treball d’intel·ligència artificial}
+\section{Exigències computacionals de les càrregues de treball d'intel·ligència artificial}
 L'aplicació pràctica d'aquestes optimitzacions es materialitza en l'execució de models d'Intel·ligència Artificial als extrems de la xarxa. Els algorismes d'\textit{Deep Learning} requereixen allotjar estructures de dades complexes (tensors) a la memòria RAM durant tot el procés d'inferència o entrenament. Qualsevol penalització estructural de la infraestructura (com el sobrecost d'un orquestrador) sostreu recursos de còmput crítics directament al model d'IA, degradant-ne el rendiment global.
 
 Per quantificar empíricament aquest impacte, s'utilitza com a referència el conjunt de dades MNIST, un estàndard clàssic de reconeixement de dígits manuscrits que permet enviar un flux constant de dades estructurades als contenidors objecte d'estudi \cite{tensorflow_mnist}.

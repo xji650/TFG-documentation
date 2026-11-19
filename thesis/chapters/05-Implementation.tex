@@ -156,7 +156,7 @@ Igual que a l'entorn natiu, la topologia es defineix a l'\texttt{inventory.ini} 
 \section{Disseny del Protocol de Comunicació i Inferència d'IA}
 Un cop desplegada la infraestructura, la transmissió de les dades s'efectua mitjançant una arquitectura de missatgeria síncrona \textit{Request-Reply} (REQ-REP) basada en TCP pur amb ZeroMQ. Després d'avaluar diverses alternatives de serialització binària, es va descartar Protobuf en favor de MessagePack per optimitzar l'agilitat operativa en l'ecosistema d'aprenentatge automàtic.
 
-Aquesta implementació elimina la necessitat de precompilar contractes estrictes (\texttt{.proto}), adoptant un format \textit{schema-less} (sense esquema) que s’integra nativament amb els diccionaris de Python i distribueix la càrrega entre el Pla de Control i el Pla de Dades, tal com s'il·lustra a les figures globals de l'arquitectura:
+Aquesta implementació elimina la necessitat de precompilar contractes estrictes (\texttt{.proto}), adoptant un format \textit{schema-less} (sense esquema) que s'integra nativament amb els diccionaris de Python i distribueix la càrrega entre el Pla de Control i el Pla de Dades, tal com s'il·lustra a les figures globals de l'arquitectura:
 
 \begin{figure}[H]
     \centering
@@ -250,14 +250,14 @@ A causa de l'ús de l'ordre d'eliminació forçada \texttt{kubectl delete pod --
 Això podia provocar una desincronització temporal entre l'eliminació del registre a l'API, la terminació efectiva del contenidor antic i la creació del nou Pod per part del controlador (\texttt{DaemonSet}). 
 En la implementació inicial, aquesta situació provocava lectures incorrectes de l'estat \texttt{Ready} i podia donar lloc a temps de recuperació artificialment curts.
 
-Per solucionar aquest problema, es va modificar l’estructura de l'\textit{script} de control mitjançant una estratègia basada en la infraestructura fixa:
+Per solucionar aquest problema, es va modificar l'estructura de l'\textit{script} de control mitjançant una estratègia basada en la infraestructura fixa:
 
 \begin{itemize}
     \item \textbf{Iteració sobre Nodes Físics:} En lloc de fer el seguiment de \textit{Pods} amb identificadors temporals i efímers (els quals queden descatalogats després de la fallada), el bucle de monitoratge itera de forma estàtica sobre els nodes físics de l'entorn (\texttt{node-a} i \texttt{node-b}).
     \item \textbf{Validació Dinàmica d'Identificadors:} L'\textit{script} realitza consultes a l'API de K3s per identificar el Pod allotjat al node objectiu. El cronòmetre de recuperació no s'atura fins que es compleixen dues condicions: que el Pod identificat sigui diferent de l'original (\texttt{\$NEW\_POD != \$POD\_NAME}) i que assoleixi l'estat \texttt{Ready}.
 \end{itemize}
 
-Aquest canvi evita que la mesura es doni per finalitzada a partir de l’estat del Pod original i estableix com a punt final la disponibilitat del Pod substitut segons l’API de Kubernetes. Tanmateix, aquest procediment no verifica per si sol la terminació física del contenidor anterior.
+Aquest canvi evita que la mesura es doni per finalitzada a partir de l'estat del Pod original i estableix com a punt final la disponibilitat del Pod substitut segons l'API de Kubernetes. Tanmateix, aquest procediment no verifica per si sol la terminació física del contenidor anterior.
 
 % NOVA SUBSECCIÓ PER SEPARAR CONCEPTES
 \subsection{Tractament Metodològic de Fallades Estructurals (Flannel)}
