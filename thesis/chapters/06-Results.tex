@@ -116,7 +116,7 @@ L'anàlisi de les mètriques visuals extretes durant la fase d'entrenament (\tex
         \caption{Exemples d'inferència del model d'IA: predicció i valor real al node \textit{Worker}.}
         \label{fig:ejemplos_inferencia}
     \end{figure}
-    Les mostres aleatòries de la figura \ref{fig:ejemplos_inferencia}) mostren les imatges d'entrada i les prediccions retornades pels \textit{Workers}, comparades amb les etiquetes reals. Aquests exemples permeten comprovar el funcionament del procés d'inferència distribuïda.
+    Les mostres aleatòries de la figura \ref{fig:ejemplos_inferencia} mostren les imatges d'entrada i les prediccions retornades pels \textit{Workers}, comparades amb les etiquetes reals. Aquests exemples permeten comprovar el funcionament del procés d'inferència distribuïda.
 \end{itemize}
 
 Havent demostrat la validesa del model d'IA, aquest actua com una càrrega d'estrès realista que serveix de base per a l'avaluació principal d'infraestructures.
@@ -170,7 +170,7 @@ Per avaluar la capacitat d'auto-recuperació davant de fallades crítiques, es v
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.7\textwidth]{sources/2_mttr_resiliencia.png}
-    \caption{Temps Mitjà de Recuperació (MTTR) del comportament habitual davant la destrucció abrupta d'un contenidor.}
+    \caption{Temps fins als criteris de recuperació definits per a cada plataforma després de l'eliminació abrupta d'un contenidor.}
     \label{fig:mttr_resiliencia}
 \end{figure}
 
@@ -180,8 +180,9 @@ Per tant, aquests valors representen el temps fins que cada plataforma assoleix 
 Tècnicament, en l'enfocament natiu el reinici del contenidor es resol localment al mateix node: Systemd, mitjançant la unitat definida amb Quadlet, supervisa el servei de Podman i en provoca el reinici sense necessitat de coordinació distribuïda.
 Kubernetes, en canvi, opera sota un model distribuït asíncron: el controlador \texttt{DaemonSet} detecta la desaparició del Pod i en crea un de substitut, que ha de ser preparat pel \texttt{Kubelet}, el motor de contenidors i els mecanismes de xarxa CNI abans d'assolir la condició \texttt{Ready} a través de l'API.
 
-Cal tenir en compte que els procediments de mesura no són idèntics: en Systemd, el cronòmetre s'executa al node Worker amb pauses de 0,05 segons, mentre que en K3s s'executa des del node que consulta l'API, amb pauses de 0,1 segons. 
 Aquesta diferència en el sondeig i en el punt de mesura s'ha de tenir present en interpretar els resultats de l'MTTR (vegeu també la secció 5.7.1).
+
+A més, l'assoliment de la condició \texttt{Ready} del Pod substitut no garanteix per si sol que el contenidor anterior hagi acabat la seva execució al node, tal com s'explica a la secció 5.7.1.
 
 \textbf{Anàlisi de l'Execució Anòmala (\textit{Outlier}):}
 
@@ -245,7 +246,11 @@ La prova final avalua l'impacte de la capa d'infraestructura sobre el rendiment 
     \label{fig:throughput_comparativa}
 \end{figure}
 
-Utilitzant exactament el mateix codi font, Systemd assoleix un processament de \textbf{\textasciitilde 9.054~img/s}, enfront de les \textbf{\textasciitilde 6.269~img/s} que assoleix Kubernetes (Figura \ref{fig:throughput_comparativa}). Aquesta degradació del rendiment (un \textbf{31~\%} inferior) és compatible amb el sobrecost introduït per la pila de xarxa de K3s, que en la configuració estudiada inclou Flannel/VXLAN i l'encaminament mitjançant NodePort. En l'arquitectura Systemd, els contenidors utilitzen una xarxa de tipus pont (\textit{bridge}) local de Podman, evitant l'encapsulament de paquets TCP a través de túnels virtuals distribuïts i reduint la càrrega de computació sobre la CPU.
+Utilitzant exactament el mateix codi font, Systemd assoleix un processament de \textbf{\textasciitilde 9.054~img/s}, enfront de les \textbf{\textasciitilde 6.269~img/s} que assoleix Kubernetes (Figura \ref{fig:throughput_comparativa}). 
+Aquesta degradació del rendiment (un \textbf{31~\%} inferior) és compatible amb el sobrecost introduït per la pila de xarxa de K3s, que en la configuració estudiada inclou Flannel/VXLAN i l'encaminament mitjançant NodePort. 
+
+En l'arquitectura Systemd, els contenidors utilitzen una xarxa de tipus pont (\textit{bridge}) local de Podman, mentre que la configuració de K3s incorpora Flannel/VXLAN i NodePort. 
+Les proves realitzades no permeten aïllar la contribució individual d'aquests components a la diferència de throughput observada.
 
 \section{Conclusions}
 L'avaluació empírica conclou que portar Kubernetes a l'Edge no és "gratuït". 
