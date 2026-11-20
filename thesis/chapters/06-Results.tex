@@ -36,7 +36,7 @@ La Taula \ref{tab:resultados_rendimiento_red} presenta les mètriques consolidad
 De l'anàlisi d'aquestes mètriques i la seva representació visual, s'extreuen les següents conclusions:
 
 \textbf{1. El Coll d'Ampolla del Text Pla (HTTP/JSON)}  
-L'estàndard web tradicional es demostra inviable per al processament perimetral. 
+En les proves realitzades, la combinació HTTP/JSON presenta el rendiment més baix de les configuracions avaluades.
 En aquesta implementació, les dades dels tensors es representen en format textual mitjançant JSON, fet que incrementa el payload fins a 15,59~MB per petició. 
 Com s'observa a la Figura \ref{fig:comparativa_protocols_throughput}, aquesta configuració presenta el rendiment més baix de les proves realitzades (\textasciitilde 2.452~img/s). 
 A més, el temps de processament del \textit{Worker} $T_{proc}$ (415~ms) és considerablement superior al de les altres configuracions, fet coherent amb el cost addicional de processament de les dades en format textual.
@@ -174,8 +174,8 @@ Per avaluar la capacitat d'auto-recuperació davant de fallades crítiques, es v
     \label{fig:mttr_resiliencia}
 \end{figure}
 
-Avaluant el comportament habitual de la infraestructura, Systemd demostra una velocitat de recuperació més ràpida i estable, reiniciant el servei en una mitjana de \textbf{\textasciitilde 452~ms}. 
-Kubernetes, per la seva banda, requereix una mitjana de \textbf{\textasciitilde 1.487~ms} (aproximadament 3,3 vegades més lent), tal com reflecteix la Figura \ref{fig:mttr_resiliencia}. 
+En les deu execucions realitzades amb Systemd, el temps mitjà fins que la unitat \texttt{worker.service} torna a l'estat \texttt{active} és de \textbf{452,09~ms}. En les nou execucions normals de K3s, el temps mitjà fins que un Pod substitut assoleix la condició \texttt{Ready} és de \textbf{1.487,28~ms}, aproximadament 3,3 vegades superior, tal com reflecteix la Figura~\ref{fig:mttr_resiliencia}.
+Per tant, aquests valors representen el temps fins que cada plataforma assoleix el seu criteri de recuperació, però no necessàriament el temps fins que el Worker torna a processar inferències correctament.
 
 Tècnicament, en l'enfocament natiu el reinici del contenidor es resol localment al mateix node: Systemd, mitjançant la unitat definida amb Quadlet, supervisa el servei de Podman i en provoca el reinici sense necessitat de coordinació distribuïda.
 Kubernetes, en canvi, opera sota un model distribuït asíncron: el controlador \texttt{DaemonSet} detecta la desaparició del Pod i en crea un de substitut, que ha de ser preparat pel \texttt{Kubelet}, el motor de contenidors i els mecanismes de xarxa CNI abans d'assolir la condició \texttt{Ready} a través de l'API.
@@ -183,34 +183,57 @@ Kubernetes, en canvi, opera sota un model distribuït asíncron: el controlador 
 Cal tenir en compte que els procediments de mesura no són idèntics: en Systemd, el cronòmetre s'executa al node Worker amb pauses de 0,05 segons, mentre que en K3s s'executa des del node que consulta l'API, amb pauses de 0,1 segons. 
 Aquesta diferència en el sondeig i en el punt de mesura s'ha de tenir present en interpretar els resultats de l'MTTR (vegeu també la secció 5.7.1).
 
-\textbf{Anàlisi de l'Execució Anòmala (\textit{Outliers}):}
+\textbf{Anàlisi de l'Execució Anòmala (\textit{Outlier}):}
 
-Cal destacar que en una de les execucions sobre K3s (protocol ZeroMQ-MessagePack) es va produir un \textit{outlier} de 261.450~ms (més de 4 minuts). Els registres de l'execució associen aquest retard a un bloqueig temporal (\textit{lock}) durant la gestió de l'adreça IP virtual per part de Flannel.
+Cal destacar que en una de les execucions sobre K3s (protocol ZeroMQ-MessagePack) es va produir un \textit{outlier} de 261.450~ms (més de 4 minuts). 
+No s'ha pogut determinar amb certesa la causa d'aquest retard. 
+Una possible hipòtesi és que estigui relacionat amb un bloqueig temporal (\textit{lock}) durant la gestió de l'adreça IP virtual per part de Flannel, tot i que aquesta explicació no s'ha pogut verificar.
+
 Aquest esdeveniment es conserva i s'analitza per separat perquè representa una incidència observada en la configuració experimental avaluada.
 
-Per facilitar la comparació del comportament habitual, es presenten a la Taula \ref{tab:estadistiques_mttr} les mètriques estadístiques calculades sobre les 9 execucions restants. 
+Per facilitar la comparació del comportament habitual, es presenten a la Taula~\ref{tab:estadistiques_mttr} les mètriques estadístiques calculades sobre les 9 execucions normals de K3s. 
+En Systemd s'inclouen les 10 execucions, ja que no s'hi ha registrat cap execució anòmala.
 
 \begin{table}[H]
     \centering
     \renewcommand{\arraystretch}{1.2}
     \begin{tabular}{lcc}
         \toprule
-        \textbf{Mètrica Estadística (Execucions Normals)} & \textbf{Systemd} & \textbf{Kubernetes (K3s)} \\
+        \textbf{Mètrica Estadística} & \textbf{Systemd} & \textbf{Kubernetes (K3s)} \\
         \midrule
-        \textbf{Mitjana (\textit{Mean})}       & 452,09~ms  & 1.487,28~ms \\
-        \textbf{Mediana (\textit{Median})}     & 454,76~ms  & 1.369,67~ms \\
-        \textbf{Mínim Registrat}               & 403,15~ms  & 973,70~ms  \\
-        \textbf{Màxim Registrat}               & 509,38~ms  & 2.170,28~ms \\
-        \textbf{Desviació Estàndard}           & \textpm 45,38~ms & \textpm 405,20~ms \\
+        Nombre d'execucions (n) & 10 & 9 \\
+        \textbf{Mitjana (\textit{Mean})} & 452,09~ms & 1.487,28~ms \\
+        \textbf{Mediana (\textit{Median})} & 454,76~ms & 1.369,67~ms \\
+        \textbf{Mínim Registrat} & 403,15~ms & 973,70~ms \\
+        \textbf{Màxim Registrat} & 509,38~ms & 2.170,28~ms \\
+        \textbf{Desviació Estàndard} & $\pm$45,38~ms & $\pm$405,20~ms \\
         \bottomrule
     \end{tabular}
-    \caption{Anàlisi estadístic del Temps Mitjà de Recuperació (excloent l'anomalia estructural de més de 4~minuts a K3s).}
+    \caption{Anàlisi estadística del temps fins al criteri de recuperació de cada plataforma, excloent l'execució anòmala de K3s.}
     \label{tab:estadistiques_mttr}
 \end{table}
 
-Els valors mostrats a la Taula 6.3 són la mitjana de les execucions realitzades. 
-La resolució individual de cada mesura ve determinada per l'interval de sondeig: 0,05~s en Systemd (executat al node \textit{Worker}) i 0,1~s en K3s (executat des del node que consulta l'API). 
-Aquesta diferència en la resolució i en el punt de mesura s'ha de tenir en compte en interpretar els resultats de l'MTTR.
+Per mostrar l'impacte de l'execució anòmala, la Taula~\ref{tab:estadistiques_mttr_complet} presenta un resum de les mètriques incloent les 10 execucions de cada plataforma.
+
+\begin{table}[H]
+    \centering
+    \renewcommand{\arraystretch}{1.2}
+    \begin{tabular}{lcc}
+        \toprule
+        \textbf{Mètrica} & \textbf{Systemd (n=10)} & \textbf{Kubernetes (K3s, n=10)} \\
+        \midrule
+        \textbf{Mitjana} & 452,09~ms & $\approx$27.483,55~ms \\
+        \textbf{Mínim Registrat} & 403,15~ms & 973,70~ms \\
+        \textbf{Màxim Registrat} & 509,38~ms & 261.450~ms \\
+        \bottomrule
+    \end{tabular}
+    \caption{Resum estadístic del temps fins al criteri de recuperació incloent totes les execucions. La mitjana de K3s és aproximada.}
+    \label{tab:estadistiques_mttr_complet}
+\end{table}
+
+Pel que fa al sondeig, el bucle de Systemd incorpora una pausa programada de 0,05~s entre consultes, mentre que el de K3s incorpora una pausa de 0,1~s entre iteracions. 
+Aquests intervals no representen el temps exacte entre consultes, ja que també cal tenir en compte el temps d'execució de les ordres. 
+A més, el cronòmetre s'executa al node Worker en Systemd i al node que consulta l'API en K3s. Aquestes diferències s'han de tenir presents en interpretar els resultats de l'MTTR.
 
 \subsection{Penalització de Xarxa Virtual (Rendiment i Throughput)}
 La prova final avalua l'impacte de la capa d'infraestructura sobre el rendiment brut de la xarxa sota estrès màxim.
@@ -218,14 +241,15 @@ La prova final avalua l'impacte de la capa d'infraestructura sobre el rendiment 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.7\textwidth]{sources/3_throughput_comparativa.png}
-    \caption{Penalització del rendiment màxim d'injecció a causa del CNI de Kubernetes.}
+    \caption{Comparació del throughput d'injecció entre Systemd i K3s en la configuració experimental avaluada.}
     \label{fig:throughput_comparativa}
 \end{figure}
 
 Utilitzant exactament el mateix codi font, Systemd assoleix un processament de \textbf{\textasciitilde 9.054~img/s}, enfront de les \textbf{\textasciitilde 6.269~img/s} que assoleix Kubernetes (Figura \ref{fig:throughput_comparativa}). Aquesta degradació del rendiment (un \textbf{31~\%} inferior) és compatible amb el sobrecost introduït per la pila de xarxa de K3s, que en la configuració estudiada inclou Flannel/VXLAN i l'encaminament mitjançant NodePort. En l'arquitectura Systemd, els contenidors utilitzen una xarxa de tipus pont (\textit{bridge}) local de Podman, evitant l'encapsulament de paquets TCP a través de túnels virtuals distribuïts i reduint la càrrega de computació sobre la CPU.
 
 \section{Conclusions}
-L'avaluació empírica conclou que portar Kubernetes a l'Edge no és "gratuït". L'orquestrador introdueix penalitzacions tangibles: incrementa la petjada de memòria en repòs al voltant d'un 15~\%, triplica el temps de recuperació local davant caigudes i presenta un rendiment de xarxa gairebé un 31~\% inferior en la configuració avaluada, una diferència compatible amb el sobrecost de la pila de xarxa de K3s.
+L'avaluació empírica conclou que portar Kubernetes a l'Edge no és "gratuït". 
+L'orquestrador introdueix penalitzacions tangibles: incrementa la petjada de memòria en repòs al voltant d'un 15~\%; en les execucions normals, el temps mitjà fins que un Pod substitut assoleix la condició \texttt{Ready} a K3s és aproximadament 3,3 vegades superior al temps fins que la unitat \texttt{worker.service} torna a l'estat \texttt{active} en Systemd; i presenta un rendiment de xarxa gairebé un 31~\% inferior en la configuració avaluada, una diferència compatible amb el sobrecost de la pila de xarxa de K3s.
 
 No obstant això, la decisió arquitectònica ha de considerar la complexitat de gestió (\textit{Management Complexity}). Systemd ofereix el màxim rendiment brut, però manca d'escalabilitat horitzontal nativa, balanceig de càrrega integrat i gestió declarativa, requerint eines externes (com Ansible) per emular un control centralitzat.
 

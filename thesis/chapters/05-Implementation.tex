@@ -188,9 +188,10 @@ El flux d'execució i l'enrutament s'estructuren de la següent manera:
 \section{Automatització del \textit{Pipeline} i \textit{Data Lake}}
 L'avaluació es fonamenta en una jerarquia de tres \textit{scripts} de Bash que actuen de manera ininterrompuda per evitar qualsevol biaix manual. 
 En el nivell superior, un \textbf{orquestrador mestre híbrid} governa el cicle de vida global de l'experiment. 
-La seva funció principal és gestionar la transició entre plataformes i garantir la integritat de les condicions inicials, forçant \textbf{reinicis de les màquines virtuals} (\texttt{sudo reboot}) als nodes perimetrals i aplicant pauses de refredament de 120 segons entre execucions. 
-Aquestes pauses permeten la dissipació de calor i redueixen la influència de l'estrangulament tèrmic (\textit{Thermal Throttling}) en les mesures, tot i que no en garanteixen l'absència total. 
-Atès que no es disposa de monitorització directa de la temperatura del SoC ni del flag de \textit{throttling}, no es pot afirmar que aquest fenomen s'eviti completament; per verificar-ho caldria instrumentar aquestes mètriques durant les proves.
+La seva funció principal és gestionar la transició entre plataformes i garantir la integritat de les condicions inicials, forçant \textbf{reinicis de les màquines virtuals} (\texttt{sudo reboot}) als nodes perimetrals i aplicant pauses de refredament de 120~s entre execucions.
+
+Tanmateix, atès que no s'ha disposat de monitorització directa de la temperatura del SoC ni de l'indicador de \textit{throttling}, no es pot determinar si aquestes pauses han reduït efectivament l'estrangulament tèrmic. 
+Aquesta manca de monitorització constitueix una limitació de l'estudi.
 
 \begin{figure}[H]
     \centering
@@ -199,7 +200,8 @@ Atès que no es disposa de monitorització directa de la temperatura del SoC ni 
     \label{fig:flow-pipeline}
 \end{figure}
 
-Un cop l'entorn experimental està estabilitzat, aquest orquestrador mestre invoca els \textit{scripts} específics d'avaluació (un dissenyat exclusivament per a Systemd i un altre per a K3s). Aquests sub-orquestradors iteren seqüencialment sobre els protocols executant les següents fases:
+Un cop l'entorn experimental està estabilitzat, aquest orquestrador mestre invoca els \textit{scripts} específics d'avaluació (un dissenyat exclusivament per a Systemd i un altre per a K3s). 
+Aquests suborquestradors iteren seqüencialment sobre els protocols executant les següents fases:
 
 \begin{itemize}
     \item \textbf{Inicialització i Estabilització:} S'executa una neteja total de l'entorn previ i es desplega la infraestructura des de zero. S'apliquen pauses d'estabilització (de 15 segons en K3s) per permetre que els processos en segon pla com el \textit{metrics-server} s'assentin i recullin dades fiables del consum base.
