@@ -14,17 +14,17 @@ Per contextualitzar adequadament l'avaluació en maquinari de capacitats reduïd
 
 \begin{table}[htbp]
     \centering
-    \renewcommand{\arraystretch}{1.4}
-    \begin{tabular}{l p{10cm}}
+    \renewcommand{\arraystretch}{1.7}
+    \begin{tabular}{p{5cm} p{10cm}}
         \hline
         \textbf{Component / Paràmetre} & \textbf{Especificació tècnica} \\ \hline
         Arquitectura base (amfitrió) & Intel Core i9-14900HX (x86\_64) \\
-        Entorns de virtualització & WSL2 (Node Mestre) / VMware Workstation Player 17 (Nodes \textit{Workers}) \\
-        S.O. i nucli (Mestre) & Ubuntu 22.04.5 LTS -- Linux Kernel 6.18.x (Microsoft Standard) \\
+        Entorns de virtualització & WSL2 (Node \textit{Master}) / VMware Workstation Player 17 (Nodes \textit{Workers}) \\
+        S.O. i nucli (\textit{Master}) & Ubuntu 22.04.5 LTS -- Linux Kernel 6.18.x (Microsoft Standard) \\
         S.O. i nucli (\textit{Workers}) & Ubuntu 24.04.4 LTS (mode \textit{headless}) -- Linux Kernel 6.8.0-138-generic \\
-        Recursos Node Mestre & 32 vCPUs, 16~GB RAM, 1~TB d'emmagatzematge \\
-        Recursos \textit{Workers} (Systemd - proves) & 2 vCPUs, 2~GB RAM, 20~GB d'emmagatzematge NVMe/SATA \\
-        Recursos \textit{Workers} (Definitiu) & 2 vCPUs, 4~GB RAM, 35~GB d'emmagatzematge NVMe/SATA \\
+        Recursos Node \textit{Master} & 32 vCPUs, 16~GB RAM, 1~TB d'emmagatzematge \\
+        Recursos \textit{Workers} \newline (Systemd – proves preliminars) & 2 vCPUs, 2~GB RAM, 20~GB d'emmagatzematge ~NVMe/SATA \\
+        Recursos \textit{Workers} \newline (Config. final (Systemd i K3s)) & 2 vCPUs, 4~GB RAM, 35~GB d'emmagatzematge ~NVMe/SATA \\
         Versions de programari & Podman (v4.9.3), Systemd (v255), K3s (v1.35.4+k3s1), Ansible (v2.17.14), Go (v1.25.9) \\
         Xarxa i connectivitat & Gestió via \textit{Netplan} (DHCP), interfície \texttt{ens33}, CNI Flannel (\texttt{10.42.1.0/24}) \\
         Velocitat de l'enllaç de xarxa & 1~Gbps (Adaptador virtualitzat per VMware) \\ \hline
@@ -33,8 +33,7 @@ Per contextualitzar adequadament l'avaluació en maquinari de capacitats reduïd
     \label{tab:testbed_general}
 \end{table}
 
-A causa de la petjada de memòria estructural associada al pla de control de Kubernetes, es van establir dues configuracions de maquinari diferenciades en funció de la fase del projecte, tal com es detalla a la Taula~\ref{tab:testbed_general}:
-
+A causa del consum de memòria del pla de control de Kubernetes, el dimensionament del maquinari es va adaptar a les diferents fases del projecte, tal com es detalla a la Taula~\ref{tab:testbed_general}:
 \begin{itemize}
     \item \textbf{Fase nativa preliminar (Systemd + Podman):} Durant les proves de viabilitat inicials, els nodes perimetrals es van configurar amb un perfil altament restrictiu de \textbf{2~vCPUs}, \textbf{2~GB de RAM} i \textbf{20~GB} d'emmagatzematge. Aquest dimensionament va permetre avaluar l'operativitat de la pila nativa en condicions de recursos mínims.
     \item \textbf{Fase d'orquestració (K3s):} L'execució de la pila de K3s sobre l'entorn inicial de 2~GB de RAM va provocar fallades d'execució per esgotament de memòria (\textit{Out-Of-Memory}, OOM). Per aquest motiu, va caldre redimensionar els nodes a \textbf{2~vCPUs}, \textbf{4~GB de RAM} i \textbf{35~GB} d'emmagatzematge de disc.
@@ -52,8 +51,8 @@ L'estudi es va estructurar en quatre etapes iteratives amb l'objectiu d'identifi
         \item \textit{Sobrecàrrega en Protobuf:} Definir la matriu de la imatge mitjançant el camp \texttt{repeated int32} en el fitxer \texttt{.proto} incrementa la mida del missatge de 784 bytes a més de 2~KB, provocant un consum excessiu de CPU durant els cicles de codificació i descodificació píxel a píxel. Encara que recórrer al tipus \texttt{bytes} esmorteïa aquesta penalització, eliminava l'avantatge del tipat estricte propi de la solució.
         \item \textit{Eficiència en MessagePack:} Aquest mecanisme permet empaquetar directament el flux binari sense processament intermedi (\textit{bin type}) a partir de les estructures de memòria, minimitzant l'ús de processador i mantenint una transmissió compacta.
     \end{itemize}
-    \item \textbf{Fase 3: Validació del protocol sobre l'orquestrador:} El comportament observat amb ZeroMQ i MessagePack es va reproduir sobre el clúster de Kubernetes, verificant que el patró d'eficiència es mantenia constant independentment de la plataforma subjacent. Com a distribució distribuïda, es va optar per K3s pel seu disseny orientat específicament a plataformes \textit{Edge}.
-    \item \textbf{Fase 4: Comparativa arquitectònica seleccionada:} Amb el canal de comunicació fixat en ZeroMQ-MessagePack per descartar limitacions de xarxa, es van executar les proves d'estrès de referència per contraposar directament l'arquitectura nativa (Systemd) amb l'entorn distribuït (K3s).
+    \item \textbf{Fase 3: Validació del protocol sobre l'orquestrador:} El comportament observat amb ZeroMQ i MessagePack es va reproduir sobre el clúster de Kubernetes, verificant que el patró d'eficiència es mantenia constant independentment de la plataforma subjacent. Com a distribució lleugera de Kubernetes, orientada a entorns \textit{Edge}, es va optar per K3s. En la configuració emprada, es va mantenir Flannel com a connector de xarxa (CNI) predeterminat, amb VXLAN com a \textit{backend} per a l'encapsulament del trànsit dels Pods entre nodes.
+    \item \textbf{Fase 4: Comparativa arquitectònica final:} Amb el canal de comunicació fixat en ZeroMQ-MessagePack per mantenir constants el mecanisme de comunicació i el format de serialització, es van executar les proves d'estrès de referència per comparar directament l'arquitectura nativa basada en Systemd i Podman amb l'entorn distribuït basat en K3s.
 \end{itemize}
 
 \section{Selecció del Model d'IA}
@@ -64,7 +63,7 @@ L'arquitectura de la prova separa el node de gestió dels nodes d'execució (\te
 
 \begin{itemize}
     \item \textbf{Construcció centralitzada:} La generació i compilació dels binaris i imatges es centralitza al node mestre per no penalitzar la capacitat de càlcul dels nodes perimetrals.
-    \item \textbf{Distribució local:} Els artefactes resultants es transfereixen directament a l'emmagatzematge intern de cada \textit{worker} abans d'iniciar les mesures.
+    \item \textbf{Distribució local:} Els artefactes resultants es transfereixen directament a l'emmagatzematge intern de cada treballador abans d'iniciar les mesures.
     \item \textbf{Separació de responsabilitats:} Tant en Systemd com en K3s, l'execució de les tasques d'inferència queda confinada als nodes perimetrals, assegurant que el pla de gestió no interfereixi en els mesuraments de rendiment.
 \end{itemize}
 
